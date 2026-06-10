@@ -2,7 +2,7 @@
 @{
     Layout = null;
     var questionTotal = Model?.Questions?.Count ?? 0;
-    var durationMinutes = Math.Max(questionTotal, 1);
+    var durationMinutes = Math.Clamp(Model?.DurationMinutes ?? 20, 5, 60);
     var durationSeconds = durationMinutes * 60;
 }
 

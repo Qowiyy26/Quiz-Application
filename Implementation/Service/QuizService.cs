@@ -41,7 +41,7 @@ namespace Quiz_Application.Implementation.Service
             _dbContext = dbContext;
         }
 
-        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, int durationMinutes, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
         {
             var language = await _languageRepository.GetLanguageByIdAsync(languageId);
             if (language == null)
@@ -62,6 +62,7 @@ namespace Quiz_Application.Implementation.Service
             await _quizRepository.CreateQuiz(quiz);
 
             var requestedCount = questionCount > 0 ? Math.Clamp(questionCount, 20, 150) : 20;
+            var requestedDuration = Math.Clamp(durationMinutes, 5, 60);
             var aiQuestions = await _questionService.GenerateQuestionsFromApiAsync(languageId, level, requestedCount, userId, selectedSubtopics, cancellation);
 
             if (aiQuestions == null || !aiQuestions.Any())
@@ -84,6 +85,7 @@ namespace Quiz_Application.Implementation.Service
                 Id = quiz.Id,
                 Level = quiz.Level,
                 LanguageName = language.LanguageName ?? "Unknown Tech",
+                DurationMinutes = requestedDuration,
                 CreatedDate = quiz.CreatedDate,
                 Questions = aiQuestions.ToList()
             };
@@ -179,6 +181,7 @@ namespace Quiz_Application.Implementation.Service
                 Id = quiz.Id,
                 Level = quiz.Level,
                 LanguageName = quiz.Language?.LanguageName ?? "Unknown",
+                DurationMinutes = Math.Max(quiz.TotalQuestions ?? questions.Count(), 1),
                 CreatedDate = quiz.CreatedDate,
                 Questions = questions.ToList()
             };
@@ -232,6 +235,7 @@ namespace Quiz_Application.Implementation.Service
                 Level = quiz.Level,
                 LanguageName = quiz.Language?.LanguageName ?? "Unknown",
                 CreatedDate = quiz.CreatedDate,
+                DurationMinutes = Math.Max(quiz.Result?.TotalQuestions ?? quiz.TotalQuestions ?? questions.Count, 1),
                 Score = quiz.Result?.Score ?? quiz.Score ?? 0,
                 TotalQuestions = quiz.Result?.TotalQuestions ?? quiz.TotalQuestions ?? questions.Count,
                 Questions = questions

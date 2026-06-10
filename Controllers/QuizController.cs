@@ -74,7 +74,7 @@ namespace Quiz_Application.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Generate(Guid languageId, string level, int questionCount, List<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<IActionResult> Generate(Guid languageId, string level, int questionCount, int durationMinutes, List<string>? selectedSubtopics, CancellationToken cancellation)
         {
             if (languageId == Guid.Empty || string.IsNullOrWhiteSpace(level))
             {
@@ -86,7 +86,7 @@ namespace Quiz_Application.Controllers
 
             try
             {
-                var quiz = await _quizService.GenerateQuizAsync(userId, languageId, level, questionCount, selectedSubtopics, cancellation);
+                var quiz = await _quizService.GenerateQuizAsync(userId, languageId, level, questionCount, durationMinutes, selectedSubtopics, cancellation);
                 return View("TakeQuiz", quiz);
             }
             catch (InvalidOperationException ex)

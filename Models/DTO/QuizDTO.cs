@@ -10,6 +10,7 @@ namespace Quiz_Application.Models.DTO
         public string? LanguageName { get; set; }
         public string? Level { get; set; }
         public int TotalQuestions { get; set; }
+        public int DurationMinutes { get; set; } = 20;
         public int Score { get; set; }
         public List<QuestionDTO> Questions { get; set; } = new List<QuestionDTO>();
         public DateTime CreatedDate { get; set; }
