@@ -7,7 +7,7 @@
 }
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -15,6 +15,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/qmstech-theme.css" />
 
     <style>
         :root {
@@ -28,6 +29,18 @@
             --surface: #ffffff;
             --page: #f5f7fb;
             --danger: #dc2626;
+        }
+
+        [data-theme="dark"] {
+            --brand: #60a5fa;
+            --brand-soft: rgba(96, 165, 250, 0.16);
+            --accent: #2dd4bf;
+            --accent-soft: rgba(45, 212, 191, 0.14);
+            --ink: #e5edf7;
+            --muted: #9aa8bd;
+            --line: #273449;
+            --surface: #111827;
+            --page: #0b1120;
         }
 
         * { box-sizing: border-box; }
@@ -50,7 +63,7 @@
             position: sticky;
             top: 0;
             z-index: 30;
-            background: rgba(245, 247, 251, 0.94);
+            background: color-mix(in srgb, var(--page) 94%, transparent);
             backdrop-filter: blur(14px);
             border-bottom: 1px solid rgba(219, 227, 239, 0.88);
             padding: 14px 0;
@@ -115,7 +128,7 @@
 
         .progress-wrap {
             height: 10px;
-            background: #e7edf6;
+            background: var(--brand-soft);
             border-radius: 999px;
             overflow: hidden;
         }
@@ -160,19 +173,19 @@
             border-radius: 8px;
             padding: 15px 16px;
             margin-bottom: 10px;
-            background: #ffffff;
+            background: var(--surface);
             cursor: pointer;
             transition: border-color 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
         }
 
         .option-container:hover {
             border-color: rgba(29, 78, 216, 0.55);
-            background: #f8fbff;
+            background: var(--brand-soft);
         }
 
         .option-container:has(.form-check-input:checked) {
             border-color: var(--brand);
-            background: #eff6ff;
+            background: var(--brand-soft);
             box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
         }
 
@@ -194,7 +207,7 @@
             align-items: center;
             justify-content: center;
             border-radius: 8px;
-            background: #eef2f7;
+            background: var(--brand-soft);
             color: var(--ink);
             font-weight: 800;
             flex: 0 0 28px;
@@ -206,7 +219,7 @@
             right: 0;
             bottom: 0;
             z-index: 40;
-            background: rgba(255, 255, 255, 0.96);
+            background: color-mix(in srgb, var(--surface) 96%, transparent);
             backdrop-filter: blur(14px);
             border-top: 1px solid var(--line);
             padding: 16px;
@@ -241,6 +254,9 @@
                     <i class="bi bi-clock-history"></i>
                     <span id="timerDisplay">@durationMinutes:00</span>
                 </span>
+                <button class="theme-toggle position-static" type="button" data-theme-toggle title="Toggle dark mode">
+                    <i class="bi bi-moon-stars"></i>
+                </button>
             </div>
         </div>
     </div>
@@ -322,6 +338,7 @@
         </form>
     </main>
 
+    <script src="~/js/qmstech-theme.js"></script>
     <script>
         const form = document.getElementById('quizForm');
         const timerDisplay = document.getElementById('timerDisplay');

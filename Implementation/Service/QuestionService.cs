@@ -251,7 +251,9 @@ namespace Quiz_Application.Implementation.Service
                    $"The questions must be about {languageName} only, not about a general course category. " +
                    $"Use only these selected subtopics/focus areas as the question source: {focusText}. " +
                    exclusions +
-                   $"Mix the question types across: what the subtopic is used for, its function or purpose, advantages, disadvantages, usefulness, limitations, syntax or commands where relevant, debugging, security, practical scenarios, best practices, and real-world problem solving. " +
+                   $"Make the questions practical and code-focused. Ask about how to use the selected subtopic in real code, what a method/function does, when to choose a method, what code pattern is correct, what output or behavior a snippet produces, how to fix a bug, and which implementation is safer or more maintainable. " +
+                   $"Also mix in questions about what the subtopic is used for, its function or purpose, advantages, disadvantages, usefulness, limitations, syntax or commands where relevant, debugging, security, best practices, and real-world problem solving. " +
+                   $"When the topic supports code, include short code snippets or method signatures inside the question text. " +
                    $"Difficulty level: {level}. {difficultyInstruction} " +
                    $"Make the options challenging and educational: every question must have exactly one correct answer. " +
                    $"At least two wrong options must look close to the real answer and should be realistic enough to confuse a learner. " +
@@ -308,8 +310,8 @@ namespace Quiz_Application.Implementation.Service
         {
             var templates = new[]
             {
-                new { Question = "In {0}, what is {2} mainly used for?", A = "Solving the specific project problem it was designed to handle", B = "Replacing every other feature in the application", C = "Improving the workflow only when it matches the requirement", D = "Avoiding validation, testing, and maintenance work", Correct = "Solving the specific project problem it was designed to handle" },
-                new { Question = "What is the main function of {2} in {0}?", A = "To provide a focused capability that supports the application behavior", B = "To make all parts of the system run without configuration", C = "To support the application behavior when used in the right context", D = "To remove the need for readable code and documentation", Correct = "To provide a focused capability that supports the application behavior" },
+                new { Question = "In {0}, when writing practical code, what is {2} mainly used for?", A = "Solving the specific project problem it was designed to handle", B = "Replacing every other feature in the application", C = "Improving the workflow only when it matches the requirement", D = "Avoiding validation, testing, and maintenance work", Correct = "Solving the specific project problem it was designed to handle" },
+                new { Question = "When choosing a method or function for {2} in {0}, what should guide your decision?", A = "The behavior the code must produce and the data it must handle", B = "The method name that looks longest or most advanced", C = "The expected behavior, input, and output of the feature", D = "The option that avoids reading documentation or testing", Correct = "The behavior the code must produce and the data it must handle" },
                 new { Question = "Which option is a real advantage of using {2} in {0}?", A = "It can make the solution clearer, safer, or easier to maintain", B = "It guarantees the project will have no bugs", C = "It can improve maintainability when applied correctly", D = "It makes performance perfect in every situation", Correct = "It can make the solution clearer, safer, or easier to maintain" },
                 new { Question = "Which option is a possible disadvantage of using {2} in {0} incorrectly?", A = "It can add complexity or create bugs when used without understanding", B = "It always makes the application impossible to deploy", C = "It can become harder to maintain if applied to the wrong problem", D = "It permanently disables testing and debugging", Correct = "It can add complexity or create bugs when used without understanding" },
                 new { Question = "When is {2} most useful in {0}?", A = "When the requirement matches the problem the concept is meant to solve", B = "When it is added to every file whether needed or not", C = "When it improves the design for the current requirement", D = "When the developer wants to avoid understanding the error", Correct = "When the requirement matches the problem the concept is meant to solve" },
@@ -367,9 +369,9 @@ namespace Quiz_Application.Implementation.Service
         {
             return level?.Trim().ToLowerInvariant() switch
             {
-                "beginner" => "Ask foundation questions about meaning, use, function, advantages, disadvantages, simple examples, and common beginner mistakes.",
-                "intermediate" => "Ask applied questions about practical use cases, normal project patterns, debugging, data flow, correct implementation choices, functions, advantages, and disadvantages.",
-                "professional" => "Ask workplace-level questions about architecture decisions, security, maintainability, functions, advantages, disadvantages, performance tradeoffs, integration, testing, and production-style debugging.",
+                "beginner" => "Ask foundation questions about meaning, use, simple code examples, basic methods/functions, advantages, disadvantages, and common beginner mistakes.",
+                "intermediate" => "Ask applied questions about practical use cases, normal project patterns, debugging, data flow, method selection, correct implementation choices, functions, advantages, and disadvantages.",
+                "professional" => "Ask workplace-level questions about code design, architecture decisions, security, maintainability, functions, methods, advantages, disadvantages, performance tradeoffs, integration, testing, and production-style debugging.",
                 "advanced" => "Ask advanced questions about optimization, internals, complex scenarios, scalability, edge cases, limitations, tradeoffs, and expert-level reasoning.",
                 "expert" => "Ask expert questions about deep internals, advantages, disadvantages, architecture tradeoffs, failure modes, performance, and scenario-based problem solving.",
                 _ => "Match the requested skill level and keep the questions practical."

@@ -8,6 +8,7 @@ using Quiz_Application.Models;
 using Quiz_Application.Models.DTO.User;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace Quiz_Application.Implementation.Service
@@ -19,20 +20,25 @@ namespace Quiz_Application.Implementation.Service
         private readonly IPasswordHasher<User> _passwordHasher;
         private readonly IConfiguration _config;
         private readonly IMemoryCache _cache;
+        private readonly IEmailService _emailService;
 
         public UserService(
             QuizContext context,
             ILogger<UserService> logger,
             IPasswordHasher<User> passwordHasher,
             IConfiguration config,
-            IMemoryCache cache)
+            IMemoryCache cache,
+            IEmailService emailService)
         {
             _context = context;
             _logger = logger;
             _passwordHasher = passwordHasher;
             _config = config;
             _cache = cache;
+            _emailService = emailService;
         }
+
+        private const int CodeMinutes = 15;
 
         public async Task<CreateUserRequestModel> CreateUserAsync(CreateUserRequestModel request, CancellationToken cancellation)
         {
@@ -64,6 +70,62 @@ namespace Quiz_Application.Implementation.Service
             return request;
         }
 
+        public async Task BeginRegistrationAsync(CreateUserRequestModel request, CancellationToken cancellation)
+        {
+            ValidateRegistrationRequest(request);
+
+            var email = NormalizeEmail(request.Email);
+            var exists = await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower(), cancellation);
+
+            if (exists)
+            {
+                throw new Exception("This email is already registered.");
+            }
+
+            var pendingUser = new User
+            {
+                Id = Guid.NewGuid(),
+                UserName = request.UserName?.Trim(),
+                Email = email,
+                CreatedDate = DateTime.UtcNow
+            };
+            pendingUser.PasswordHash = _passwordHasher.HashPassword(pendingUser, request.Password!);
+
+            var code = GenerateSecurityCode();
+            var cacheEntry = new PendingRegistration(pendingUser, HashCode(code));
+            _cache.Set(RegistrationCacheKey(email), cacheEntry, TimeSpan.FromMinutes(CodeMinutes));
+
+            await _emailService.SendAsync(
+                email,
+                "Confirm your Q-MSTech account",
+                BuildCodeEmail("Confirm your account", code, "Use this code to complete your Q-MSTech account creation."),
+                cancellation);
+        }
+
+        public async Task ConfirmRegistrationAsync(ConfirmEmailRequestModel request, CancellationToken cancellation)
+        {
+            var email = NormalizeEmail(request.Email);
+            var code = request.Code?.Trim() ?? string.Empty;
+
+            if (!_cache.TryGetValue(RegistrationCacheKey(email), out PendingRegistration? pending) ||
+                pending == null ||
+                !FixedTimeEquals(pending.CodeHash, HashCode(code)))
+            {
+                throw new Exception("Invalid or expired confirmation code.");
+            }
+
+            var exists = await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower(), cancellation);
+            if (exists)
+            {
+                _cache.Remove(RegistrationCacheKey(email));
+                throw new Exception("This email is already registered.");
+            }
+
+            await _context.Users.AddAsync(pending.User, cancellation);
+            await _context.SaveChangesAsync(cancellation);
+            _cache.Remove(RegistrationCacheKey(email));
+        }
+
         public async Task<LoginResponseModel> LoginAsync(LoginRequestModel request, CancellationToken cancellation)
         {
             var user = await _context.Users
@@ -86,6 +148,49 @@ namespace Quiz_Application.Implementation.Service
                 Email = user.Email,
                 User = MapToDto(user)
             };
+        }
+
+        public async Task BeginPasswordResetAsync(ForgotPasswordRequestModel request, CancellationToken cancellation)
+        {
+            var email = NormalizeEmail(request.Email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower(), cancellation);
+
+            if (user == null)
+            {
+                _logger.LogInformation("Password reset requested for unknown email {Email}.", email);
+                return;
+            }
+
+            var code = GenerateSecurityCode();
+            _cache.Set(PasswordResetCacheKey(email), HashCode(code), TimeSpan.FromMinutes(CodeMinutes));
+
+            await _emailService.SendAsync(
+                email,
+                "Reset your Q-MSTech password",
+                BuildCodeEmail("Reset your password", code, "Use this code to confirm that you requested a password change."),
+                cancellation);
+        }
+
+        public async Task ResetPasswordAsync(ResetPasswordRequestModel request, CancellationToken cancellation)
+        {
+            var email = NormalizeEmail(request.Email);
+            var code = request.Code?.Trim() ?? string.Empty;
+
+            if (!_cache.TryGetValue(PasswordResetCacheKey(email), out string? expectedHash) ||
+                string.IsNullOrWhiteSpace(expectedHash) ||
+                !FixedTimeEquals(expectedHash, HashCode(code)))
+            {
+                throw new Exception("Invalid or expired reset code.");
+            }
+
+            ValidatePassword(request.NewPassword);
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower(), cancellation)
+                ?? throw new Exception("Invalid or expired reset code.");
+
+            user.PasswordHash = _passwordHasher.HashPassword(user, request.NewPassword!);
+            await _context.SaveChangesAsync(cancellation);
+            _cache.Remove(PasswordResetCacheKey(email));
         }
 
         public async Task<UserDTO?> GetUserProfileByUserId(Guid userId, CancellationToken cancellation)
@@ -149,5 +254,73 @@ namespace Quiz_Application.Implementation.Service
                 .FirstOrDefaultAsync(u => u.Email != null && u.Email.ToLower() == email.ToLower(), cancellation);
             return user == null ? null : MapToDto(user);
         }
+
+        private static void ValidateRegistrationRequest(CreateUserRequestModel request)
+        {
+            if (string.IsNullOrWhiteSpace(request.UserName))
+            {
+                throw new Exception("Username is required.");
+            }
+
+            if (string.IsNullOrWhiteSpace(request.Email))
+            {
+                throw new Exception("Email is required.");
+            }
+
+            ValidatePassword(request.Password);
+
+            if (!string.Equals(request.Password, request.ConfirmPassword, StringComparison.Ordinal))
+            {
+                throw new Exception("Passwords do not match.");
+            }
+        }
+
+        private static void ValidatePassword(string? password)
+        {
+            if (string.IsNullOrWhiteSpace(password) ||
+                password.Length < 8 ||
+                !password.Any(char.IsUpper) ||
+                !password.Any(char.IsLower) ||
+                !password.Any(char.IsDigit))
+            {
+                throw new Exception("Password must be at least 8 characters and include uppercase, lowercase, and a number.");
+            }
+        }
+
+        private static string NormalizeEmail(string? email) => (email ?? string.Empty).Trim().ToLowerInvariant();
+
+        private static string GenerateSecurityCode() => RandomNumberGenerator.GetInt32(100000, 1000000).ToString();
+
+        private static string HashCode(string code)
+        {
+            var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(code));
+            return Convert.ToHexString(bytes);
+        }
+
+        private static bool FixedTimeEquals(string expected, string actual)
+        {
+            var expectedBytes = Encoding.UTF8.GetBytes(expected);
+            var actualBytes = Encoding.UTF8.GetBytes(actual);
+            return expectedBytes.Length == actualBytes.Length &&
+                   CryptographicOperations.FixedTimeEquals(expectedBytes, actualBytes);
+        }
+
+        private static string RegistrationCacheKey(string email) => $"RegistrationCode_{email}";
+
+        private static string PasswordResetCacheKey(string email) => $"PasswordResetCode_{email}";
+
+        private static string BuildCodeEmail(string title, string code, string message)
+        {
+            return $"""
+                <div style="font-family:Inter,Arial,sans-serif;line-height:1.6;color:#0f172a">
+                    <h2>{title}</h2>
+                    <p>{message}</p>
+                    <p style="font-size:28px;font-weight:800;letter-spacing:6px;background:#eef2ff;padding:14px 18px;border-radius:8px;display:inline-block">{code}</p>
+                    <p>This code expires in {CodeMinutes} minutes. If you did not request this, ignore this email.</p>
+                </div>
+                """;
+        }
+
+        private sealed record PendingRegistration(User User, string CodeHash);
     }
 }

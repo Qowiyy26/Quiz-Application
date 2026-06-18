@@ -134,8 +134,87 @@ namespace Quiz_Application.Controllers
         {
             try
             {
-                await _userService.CreateUserAsync(request, cancellation);
-                TempData["Message"] = "Identity Created. Please authorize via login.";
+                await _userService.BeginRegistrationAsync(request, cancellation);
+                TempData["Message"] = "We sent a confirmation code to your email.";
+                return RedirectToAction(nameof(ConfirmEmail), new { email = request.Email });
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return View(request);
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ConfirmEmail(string email)
+        {
+            return View(new ConfirmEmailRequestModel { Email = email });
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailRequestModel request, CancellationToken cancellation)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(request);
+            }
+
+            try
+            {
+                await _userService.ConfirmRegistrationAsync(request, cancellation);
+                TempData["Message"] = "Email confirmed. You can now log in.";
+                return RedirectToAction(nameof(Login));
+            }
+            catch (Exception ex)
+            {
+                TempData["Error"] = ex.Message;
+                return View(request);
+            }
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ForgotPassword() => View(new ForgotPasswordRequestModel());
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ForgotPassword(ForgotPasswordRequestModel request, CancellationToken cancellation)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(request);
+            }
+
+            await _userService.BeginPasswordResetAsync(request, cancellation);
+            TempData["Message"] = "If the email exists, a reset code has been sent.";
+            return RedirectToAction(nameof(ResetPassword), new { email = request.Email });
+        }
+
+        [AllowAnonymous]
+        [HttpGet]
+        public IActionResult ResetPassword(string email)
+        {
+            return View(new ResetPasswordRequestModel { Email = email });
+        }
+
+        [AllowAnonymous]
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> ResetPassword(ResetPasswordRequestModel request, CancellationToken cancellation)
+        {
+            if (!ModelState.IsValid)
+            {
+                return View(request);
+            }
+
+            try
+            {
+                await _userService.ResetPasswordAsync(request, cancellation);
+                TempData["Message"] = "Password changed successfully. Please log in.";
                 return RedirectToAction(nameof(Login));
             }
             catch (Exception ex)

@@ -1,0 +1,38 @@
+@model Quiz_Application.Models.DTO.User.ConfirmEmailRequestModel
+@{ Layout = null; }
+
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Confirm Email | Q-MSTech</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="~/css/qmstech-theme.css" />
+</head>
+<body class="auth-page">
+    <button class="theme-toggle" type="button" data-theme-toggle><i class="bi bi-moon-stars"></i></button>
+    <main class="auth-shell">
+        <section class="auth-card">
+            <div class="brand-lockup justify-content-center mb-4">
+                <span class="brand-mark"><i class="bi bi-shield-check"></i></span>
+                <span>Q-MS<span>Tech</span></span>
+            </div>
+            <h1 class="auth-title">Confirm Your Email</h1>
+            <p class="auth-subtitle">Enter the 6-digit code sent to your email address.</p>
+            @if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
+            @if (TempData["Message"] != null) { <div class="alert alert-success">@TempData["Message"]</div> }
+            <form asp-action="ConfirmEmail" method="post">
+                @Html.AntiForgeryToken()
+                <input asp-for="Email" type="email" class="form-control qm-input mb-3" readonly />
+                <input asp-for="Code" class="form-control qm-input mb-4 text-center fs-4 fw-bold" placeholder="000000" maxlength="6" required />
+                <button class="btn qm-primary w-100" type="submit">Confirm Account</button>
+            </form>
+            <p class="text-center mt-4 mb-0"><a asp-action="Register" class="qm-link">Use another email</a></p>
+        </section>
+    </main>
+    <script src="~/js/qmstech-theme.js"></script>
+</body>
+</html>
