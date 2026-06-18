@@ -249,16 +249,18 @@ namespace Quiz_Application.Implementation.Service
 
             return $"Generate exactly {count} multiple-choice quiz questions for the selected technology topic: {languageName}. " +
                    $"The questions must be about {languageName} only, not about a general course category. " +
-                   $"Cover all these subtopics/focus areas in a mixed way: {focusText}. " +
+                   $"Use only these selected subtopics/focus areas as the question source: {focusText}. " +
                    exclusions +
-                   $"Mix the question types: definitions, syntax or commands where relevant, debugging, security, practical scenarios, best practices, and real-world problem solving. " +
+                   $"Mix the question types across: what the subtopic is used for, its function or purpose, advantages, disadvantages, usefulness, limitations, syntax or commands where relevant, debugging, security, practical scenarios, best practices, and real-world problem solving. " +
                    $"Difficulty level: {level}. {difficultyInstruction} " +
-                   $"Make the options challenging and educational: every question must have one clearly correct answer, but at least two wrong options must be realistic distractors that a learner could reasonably confuse with the correct answer. " +
-                   $"Do not make wrong options obviously silly, unrelated, or impossible. Use common mistakes, near-correct syntax, incomplete best practices, reversed concepts, or plausible but unsafe approaches as distractors. " +
+                   $"Make the options challenging and educational: every question must have exactly one correct answer. " +
+                   $"At least two wrong options must look close to the real answer and should be realistic enough to confuse a learner. " +
+                   $"The two strongest distractors should use common mistakes, near-correct syntax, incomplete best practices, reversed concepts, partial truths, or plausible but unsafe approaches. " +
+                   $"Do not make wrong options silly, unrelated, impossible, or obviously false. " +
                    $"The correct answer must appear in a random position among the four options, not always first. " +
                    $"Start from question number {startNumber}, but do not include numbering in the JSON. " +
                    $"Each question must have 4 options. " +
-                   $"The correctAnswer must be the full text of one of the options. " +
+                   $"The correctAnswer must exactly match the full text of one option. " +
                    $"Return valid JSON only as an array of objects with this shape: " +
                    $"[{{\"question\":\"string\",\"options\":[\"A\",\"B\",\"C\",\"D\"],\"correctAnswer\":\"string\"}}]. " +
                    $"Do not use markdown, explanations, comments, or trailing commas.";
@@ -306,12 +308,12 @@ namespace Quiz_Application.Implementation.Service
         {
             var templates = new[]
             {
-                new { Question = "In {0}, why is {2} important?", A = "It helps solve real problems correctly", B = "It removes the need to test", C = "It makes every answer automatic", D = "It should be ignored in projects", Correct = "It helps solve real problems correctly" },
-                new { Question = "For {1} level {0}, what is the best way to practice {2}?", A = "Build examples and check the result", B = "Guess without testing", C = "Avoid documentation", D = "Skip the basics entirely", Correct = "Build examples and check the result" },
-                new { Question = "When debugging {2} in {0}, what should you do first?", A = "Reproduce the issue and inspect the error", B = "Delete unrelated code", C = "Ignore logs", D = "Change random settings", Correct = "Reproduce the issue and inspect the error" },
-                new { Question = "Which habit improves reliability when working with {2} in {0}?", A = "Test important behavior before release", B = "Skip validation", C = "Never review code", D = "Use random configuration", Correct = "Test important behavior before release" },
-                new { Question = "Which security practice matters for {2} in {0}?", A = "Validate input and use least privilege", B = "Disable authentication", C = "Trust every request", D = "Expose secrets publicly", Correct = "Validate input and use least privilege" },
-                new { Question = "What should guide design choices for {2} in {0}?", A = "Requirements, constraints, and maintainability", B = "Only visual preference", C = "Copying unrelated projects", D = "Avoiding user needs", Correct = "Requirements, constraints, and maintainability" }
+                new { Question = "In {0}, what is {2} mainly used for?", A = "Solving the specific project problem it was designed to handle", B = "Replacing every other feature in the application", C = "Improving the workflow only when it matches the requirement", D = "Avoiding validation, testing, and maintenance work", Correct = "Solving the specific project problem it was designed to handle" },
+                new { Question = "What is the main function of {2} in {0}?", A = "To provide a focused capability that supports the application behavior", B = "To make all parts of the system run without configuration", C = "To support the application behavior when used in the right context", D = "To remove the need for readable code and documentation", Correct = "To provide a focused capability that supports the application behavior" },
+                new { Question = "Which option is a real advantage of using {2} in {0}?", A = "It can make the solution clearer, safer, or easier to maintain", B = "It guarantees the project will have no bugs", C = "It can improve maintainability when applied correctly", D = "It makes performance perfect in every situation", Correct = "It can make the solution clearer, safer, or easier to maintain" },
+                new { Question = "Which option is a possible disadvantage of using {2} in {0} incorrectly?", A = "It can add complexity or create bugs when used without understanding", B = "It always makes the application impossible to deploy", C = "It can become harder to maintain if applied to the wrong problem", D = "It permanently disables testing and debugging", Correct = "It can add complexity or create bugs when used without understanding" },
+                new { Question = "When is {2} most useful in {0}?", A = "When the requirement matches the problem the concept is meant to solve", B = "When it is added to every file whether needed or not", C = "When it improves the design for the current requirement", D = "When the developer wants to avoid understanding the error", Correct = "When the requirement matches the problem the concept is meant to solve" },
+                new { Question = "When debugging {2} in {0}, what should you check first?", A = "Reproduce the issue and inspect the relevant error or behavior", B = "Change unrelated settings until the error disappears", C = "Check the exact input, output, and error around the feature", D = "Delete the feature before reading the error message", Correct = "Reproduce the issue and inspect the relevant error or behavior" }
             };
 
             var questions = new List<QuestionDTO>();
@@ -365,11 +367,11 @@ namespace Quiz_Application.Implementation.Service
         {
             return level?.Trim().ToLowerInvariant() switch
             {
-                "beginner" => "Ask simple foundation questions: meaning, basic syntax, basic usage, simple examples, and common beginner mistakes.",
-                "intermediate" => "Ask applied questions: practical use cases, normal project patterns, debugging, data flow, and correct implementation choices.",
-                "professional" => "Ask workplace-level questions: architecture decisions, security, maintainability, performance tradeoffs, integration, testing, and debugging production-style issues.",
-                "advanced" => "Ask advanced questions: optimization, internals, complex scenarios, scalability, edge cases, and expert-level reasoning.",
-                "expert" => "Ask expert questions: deep internals, architecture tradeoffs, failure modes, performance, and scenario-based problem solving.",
+                "beginner" => "Ask foundation questions about meaning, use, function, advantages, disadvantages, simple examples, and common beginner mistakes.",
+                "intermediate" => "Ask applied questions about practical use cases, normal project patterns, debugging, data flow, correct implementation choices, functions, advantages, and disadvantages.",
+                "professional" => "Ask workplace-level questions about architecture decisions, security, maintainability, functions, advantages, disadvantages, performance tradeoffs, integration, testing, and production-style debugging.",
+                "advanced" => "Ask advanced questions about optimization, internals, complex scenarios, scalability, edge cases, limitations, tradeoffs, and expert-level reasoning.",
+                "expert" => "Ask expert questions about deep internals, advantages, disadvantages, architecture tradeoffs, failure modes, performance, and scenario-based problem solving.",
                 _ => "Match the requested skill level and keep the questions practical."
             };
         }

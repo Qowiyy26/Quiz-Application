@@ -41,7 +41,7 @@ namespace Quiz_Application.Implementation.Service
             _dbContext = dbContext;
         }
 
-        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, int durationMinutes, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
         {
             var language = await _languageRepository.GetLanguageByIdAsync(languageId);
             if (language == null)
@@ -62,7 +62,7 @@ namespace Quiz_Application.Implementation.Service
             await _quizRepository.CreateQuiz(quiz);
 
             var requestedCount = questionCount > 0 ? Math.Clamp(questionCount, 20, 150) : 20;
-            var requestedDuration = Math.Clamp(durationMinutes, 5, 60);
+            var requestedDuration = CalculateDurationMinutes(requestedCount);
             var aiQuestions = await _questionService.GenerateQuestionsFromApiAsync(languageId, level, requestedCount, userId, selectedSubtopics, cancellation);
 
             if (aiQuestions == null || !aiQuestions.Any())
@@ -277,6 +277,17 @@ namespace Quiz_Application.Implementation.Service
             TotalQuestions = q.Result?.TotalQuestions ?? q.TotalQuestions ?? 0,
             CreatedDate = q.CreatedDate
         };
+
+        private static int CalculateDurationMinutes(int questionCount)
+        {
+            return questionCount switch
+            {
+                <= 20 => 7,
+                <= 50 => 18,
+                <= 100 => 35,
+                _ => 60
+            };
+        }
 
     }
 }
