@@ -8,6 +8,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
+using Quiz_Application.Models.DTO;
 
 namespace Quiz_Application.Implementation.Service
 {
@@ -41,14 +42,14 @@ namespace Quiz_Application.Implementation.Service
             _geminiApiKey = _config["Gemini:ApiKey"] ?? string.Empty;
         }
 
-        public async Task<List<QuestionDTO>> GenerateQuestionsFromApiAsync(Guid languageId, string level, int numberOfQuestions, Guid userId, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<List<QuestionDTO>> GenerateQuestionsFromApiAsync(Guid languageId, string level, int numberOfQuestions, Guid userId, IEnumerable<string>? selectedSubtopics, string? subtopicTrack, CancellationToken cancellation)
         {
             var language = await _languageRepository.GetLanguageByIdAsync(languageId);
             if (language == null) throw new Exception("Invalid language");
 
             numberOfQuestions = Math.Clamp(numberOfQuestions, 20, 150);
             var languageName = language.LanguageName ?? "Technology";
-            var allowedSubtopics = TechSubtopicCatalog.GetSubtopics(languageName);
+            var allowedSubtopics = TechSubtopicCatalog.GetSubtopics(languageName, subtopicTrack);
             var selected = (selectedSubtopics ?? Enumerable.Empty<string>())
                 .Where(s => !string.IsNullOrWhiteSpace(s))
                 .Select(s => s.Trim())
@@ -72,7 +73,7 @@ namespace Quiz_Application.Implementation.Service
             {
                 var remaining = numberOfQuestions - questions.Count;
                 var currentBatchSize = Math.Min(batchSize, remaining);
-                var prompt = BuildPrompt(languageName, level, currentBatchSize, questions.Count + 1, previousQuestions, focusAreas);
+                var prompt = BuildPrompt(languageName, level, currentBatchSize, questions.Count + 1, previousQuestions, focusAreas, subtopicTrack);
 
                 var requestBody = new
                 {
@@ -239,22 +240,28 @@ namespace Quiz_Application.Implementation.Service
 
 
 
-        private static string BuildPrompt(string languageName, string level, int count, int startNumber, HashSet<string> previousQuestions, List<string> focusAreas)
+        private static string BuildPrompt(string languageName, string level, int count, int startNumber, HashSet<string> previousQuestions, List<string> focusAreas, string? subtopicTrack)
         {
             var exclusions = previousQuestions.Any()
                 ? "Do not repeat or closely paraphrase these previous questions: " + string.Join(" | ", previousQuestions.Take(40)) + ". "
                 : string.Empty;
             var difficultyInstruction = GetDifficultyInstruction(level);
             var focusText = string.Join(", ", focusAreas);
+            var trackInstruction = GetTrackInstruction(subtopicTrack);
 
             return $"Generate exactly {count} multiple-choice quiz questions for the selected technology topic: {languageName}. " +
                    $"The questions must be about {languageName} only, not about a general course category. " +
                    $"Use only these selected subtopics/focus areas as the question source: {focusText}. " +
                    exclusions +
-                   $"Make the questions practical and code-focused. Ask about how to use the selected subtopic in real code, what a method/function does, when to choose a method, what code pattern is correct, what output or behavior a snippet produces, how to fix a bug, and which implementation is safer or more maintainable. " +
-                   $"Also mix in questions about what the subtopic is used for, its function or purpose, advantages, disadvantages, usefulness, limitations, syntax or commands where relevant, debugging, security, best practices, and real-world problem solving. " +
-                   $"When the topic supports code, include short code snippets or method signatures inside the question text. " +
+                   $"{trackInstruction} " +
+                   $"Make 90 percent of the questions practical, scenario-based, and code-focused. Only 10 percent may be pure theory. Put the learner inside real life software tasks such as building a login flow, fixing a bug, completing a controller/action, choosing a SQL query, securing an endpoint, debugging an API request, refactoring a method, reading a stack trace, or completing a small code snippet. " +
+                   $"Ask what code should replace a TODO, which method call completes the feature, which snippet produces the required behavior, which implementation is safest, which bug causes the output, and which tradeoff matters in a real project. " +
+                   $"Avoid shallow questions like 'What is X?' unless they are part of the 10 percent theory portion. Most questions must start from a realistic task, bug report, code review, production issue, database/API request, UI behavior, security concern, or deployment scenario. " +
+                   $"Every practical question should mention a concrete situation and force the learner to choose an action, code line, query, command, method, fix, or design decision. " +
+                   $"The small 10 percent theory portion may ask about purpose, advantages, disadvantages, usefulness, limitations, syntax, commands, or best practices, but it must still connect to the selected subtopic. " +
+                   $"When the topic supports code, at least 90 percent of the questions must include a short code snippet, command, query, method signature, configuration sample, terminal output, stack trace, or pseudo-code scenario inside the question text. " +
                    $"Difficulty level: {level}. {difficultyInstruction} " +
+                   $"Keep the difficulty strict: Beginner must not use professional architecture questions; Intermediate must be more applied than Beginner; Professional must include workplace code decisions and production tradeoffs; Advanced must be the hardest with complex edge cases and deep reasoning. " +
                    $"Make the options challenging and educational: every question must have exactly one correct answer. " +
                    $"At least two wrong options must look close to the real answer and should be realistic enough to confuse a learner. " +
                    $"The two strongest distractors should use common mistakes, near-correct syntax, incomplete best practices, reversed concepts, partial truths, or plausible but unsafe approaches. " +
@@ -310,12 +317,16 @@ namespace Quiz_Application.Implementation.Service
         {
             var templates = new[]
             {
-                new { Question = "In {0}, when writing practical code, what is {2} mainly used for?", A = "Solving the specific project problem it was designed to handle", B = "Replacing every other feature in the application", C = "Improving the workflow only when it matches the requirement", D = "Avoiding validation, testing, and maintenance work", Correct = "Solving the specific project problem it was designed to handle" },
-                new { Question = "When choosing a method or function for {2} in {0}, what should guide your decision?", A = "The behavior the code must produce and the data it must handle", B = "The method name that looks longest or most advanced", C = "The expected behavior, input, and output of the feature", D = "The option that avoids reading documentation or testing", Correct = "The behavior the code must produce and the data it must handle" },
-                new { Question = "Which option is a real advantage of using {2} in {0}?", A = "It can make the solution clearer, safer, or easier to maintain", B = "It guarantees the project will have no bugs", C = "It can improve maintainability when applied correctly", D = "It makes performance perfect in every situation", Correct = "It can make the solution clearer, safer, or easier to maintain" },
-                new { Question = "Which option is a possible disadvantage of using {2} in {0} incorrectly?", A = "It can add complexity or create bugs when used without understanding", B = "It always makes the application impossible to deploy", C = "It can become harder to maintain if applied to the wrong problem", D = "It permanently disables testing and debugging", Correct = "It can add complexity or create bugs when used without understanding" },
-                new { Question = "When is {2} most useful in {0}?", A = "When the requirement matches the problem the concept is meant to solve", B = "When it is added to every file whether needed or not", C = "When it improves the design for the current requirement", D = "When the developer wants to avoid understanding the error", Correct = "When the requirement matches the problem the concept is meant to solve" },
-                new { Question = "When debugging {2} in {0}, what should you check first?", A = "Reproduce the issue and inspect the relevant error or behavior", B = "Change unrelated settings until the error disappears", C = "Check the exact input, output, and error around the feature", D = "Delete the feature before reading the error message", Correct = "Reproduce the issue and inspect the relevant error or behavior" }
+                new { Question = "A developer is building a {0} feature that uses {2}. The code has a TODO where the main logic should be placed. What should the developer focus on first?", A = "Implement the exact behavior required by the feature and validate the input/output", B = "Add the most advanced-looking syntax even if it is not needed", C = "Copy a similar block without checking if it matches the requirement", D = "Skip validation so the code runs faster during testing", Correct = "Implement the exact behavior required by the feature and validate the input/output" },
+                new { Question = "In a real {0} project, a bug appears after adding {2}. What is the best first debugging step?", A = "Reproduce the bug, inspect the failing input, and trace the code path around {2}", B = "Rewrite unrelated files until the error disappears", C = "Ignore the error if the page still loads sometimes", D = "Delete the feature before checking logs or output", Correct = "Reproduce the bug, inspect the failing input, and trace the code path around {2}" },
+                new { Question = "A teammate asks which implementation of {2} should be used in a {0} production task. Which answer is best?", A = "Choose the implementation that satisfies the requirement, is testable, and is easiest to maintain", B = "Choose the shortest code even if it hides errors", C = "Choose the version with the most complex syntax", D = "Choose any version because all implementations behave the same", Correct = "Choose the implementation that satisfies the requirement, is testable, and is easiest to maintain" },
+                new { Question = "A {0} code review finds this issue around {2}: the feature works for one case but fails for invalid input. What correction is most practical?", A = "Add input validation and handle the failure path clearly", B = "Remove all error messages from the application", C = "Assume users will always enter correct data", D = "Move the code to another file without changing the logic", Correct = "Add input validation and handle the failure path clearly" },
+                new { Question = "A user reports that a {0} feature using {2} is slow in a real project. Which option is the most useful investigation?", A = "Measure the slow step, inspect queries or loops, and optimize only the proven bottleneck", B = "Optimize every file before measuring anything", C = "Disable the feature permanently", D = "Change the UI color because performance is mostly visual", Correct = "Measure the slow step, inspect queries or loops, and optimize only the proven bottleneck" },
+                new { Question = "A junior developer writes a {0} solution with {2} but leaves security checks out. What is the safest correction?", A = "Add proper validation, authorization, and safe handling for the feature's data", B = "Trust all client-side input because the UI looks correct", C = "Store sensitive data in plain text for easier debugging", D = "Let every logged-in user perform every action", Correct = "Add proper validation, authorization, and safe handling for the feature's data" },
+                new { Question = "Complete the practical idea for a {0} task using {2}: before saving data, the method should ____.", A = "validate the request, handle errors, and save only correct data", B = "save first and check errors only after deployment", C = "ignore missing values to reduce code size", D = "return success before the operation finishes", Correct = "validate the request, handle errors, and save only correct data" },
+                new { Question = "A {0} project has two possible solutions for {2}. One is quick but hard to test; the other is clear and testable. Which should be selected for a serious project?", A = "The clear and testable solution, because maintenance matters after the first release", B = "The hard-to-test solution because tests are optional", C = "The solution with fewer lines even if it breaks edge cases", D = "The solution that hides errors from the user and logs", Correct = "The clear and testable solution, because maintenance matters after the first release" },
+                new { Question = "When using {2} in {0}, which option best explains its practical purpose?", A = "It helps solve a specific development problem when applied to the right requirement", B = "It replaces every other concept in the technology", C = "It guarantees no bug can ever happen", D = "It removes the need for testing, debugging, and documentation", Correct = "It helps solve a specific development problem when applied to the right requirement" },
+                new { Question = "Which disadvantage can happen if {2} is used wrongly in a {0} project?", A = "The code can become harder to maintain or may introduce hidden bugs", B = "The whole technology becomes unusable forever", C = "The computer cannot compile any other project again", D = "All secure coding practices become unnecessary", Correct = "The code can become harder to maintain or may introduce hidden bugs" }
             };
 
             var questions = new List<QuestionDTO>();
@@ -369,12 +380,24 @@ namespace Quiz_Application.Implementation.Service
         {
             return level?.Trim().ToLowerInvariant() switch
             {
-                "beginner" => "Ask foundation questions about meaning, use, simple code examples, basic methods/functions, advantages, disadvantages, and common beginner mistakes.",
-                "intermediate" => "Ask applied questions about practical use cases, normal project patterns, debugging, data flow, method selection, correct implementation choices, functions, advantages, and disadvantages.",
-                "professional" => "Ask workplace-level questions about code design, architecture decisions, security, maintainability, functions, methods, advantages, disadvantages, performance tradeoffs, integration, testing, and production-style debugging.",
-                "advanced" => "Ask advanced questions about optimization, internals, complex scenarios, scalability, edge cases, limitations, tradeoffs, and expert-level reasoning.",
-                "expert" => "Ask expert questions about deep internals, advantages, disadvantages, architecture tradeoffs, failure modes, performance, and scenario-based problem solving.",
+                "beginner" => "Ask easy but meaningful foundation questions using simple real-life examples. Include short one-step snippets, basic method/function behavior, simple syntax completion, advantages, disadvantages, and common beginner mistakes. Avoid architecture, deep optimization, or production deployment questions.",
+                "intermediate" => "Ask moderately complex applied questions. Use small real project scenarios, debugging, data flow, method selection, implementation choices, two-step code reasoning, advantages, and disadvantages. Make the questions clearly harder than Beginner.",
+                "professional" => "Ask very complex workplace-level questions. Include realistic code snippets, design decisions, security, maintainability, testing, integration, performance tradeoffs, production debugging, and choosing the best method or pattern for a real project.",
+                "pro" => "Ask very complex workplace-level questions. Include realistic code snippets, design decisions, security, maintainability, testing, integration, performance tradeoffs, production debugging, and choosing the best method or pattern for a real project.",
+                "advanced" => "Ask hard and very complex questions. Use advanced code behavior, optimization, internals, scalability, edge cases, limitations, tradeoffs, failure modes, architecture reasoning, and expert-level scenarios.",
+                "expert" => "Ask hard and very complex questions. Use deep internals, advantages, disadvantages, architecture tradeoffs, failure modes, performance, security, and scenario-based problem solving.",
                 _ => "Match the requested skill level and keep the questions practical."
+            };
+        }
+
+        private static string GetTrackInstruction(string? subtopicTrack)
+        {
+            return subtopicTrack?.Trim().ToLowerInvariant() switch
+            {
+                "fundamentals" => "Use beginner-friendly subtopics only: core concepts, syntax, simple functions, basic usage, and first-level mistakes.",
+                "professional" => "Use professional subtopics: debugging, security, testing, performance, integration, database/API work, deployment concerns, and maintainable project code.",
+                "architecture" => "Use the full architecture view: combine fundamentals, implementation, integration, security, performance, and system design subtopics under the selected course.",
+                _ => "Use the selected subtopics exactly as the source for the questions."
             };
         }
 

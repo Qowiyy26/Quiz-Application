@@ -3,7 +3,9 @@
     Layout = null;
     var questionTotal = Model?.Questions?.Count ?? 0;
     var durationMinutes = Math.Clamp(Model?.DurationMinutes ?? 7, 5, 60);
-    var durationSeconds = durationMinutes * 60;
+    var isSpeedMode = string.Equals(Model?.QuizMode, "Speed", StringComparison.OrdinalIgnoreCase);
+    var durationSeconds = isSpeedMode ? 60 : durationMinutes * 60;
+    var timerLabel = isSpeedMode ? "1:00" : $"{durationMinutes}:00";
 }
 
 <!DOCTYPE html>
@@ -146,6 +148,11 @@
             border-radius: 8px;
             box-shadow: 0 12px 28px rgba(15, 23, 42, 0.05);
             margin-bottom: 18px;
+            display: none;
+        }
+
+        .quiz-card.active {
+            display: block;
         }
 
         .quiz-card.unanswered-alert {
@@ -233,6 +240,12 @@
             font-weight: 800;
         }
 
+        .nav-btn {
+            border-radius: 8px;
+            padding: 14px 18px;
+            font-weight: 800;
+        }
+
         .helper-text { color: var(--muted); }
 
         @@media (max-width: 640px) {
@@ -252,7 +265,7 @@
                 </div>
                 <span class="timer-pill" id="timerPill">
                     <i class="bi bi-clock-history"></i>
-                    <span id="timerDisplay">@durationMinutes:00</span>
+                    <span id="timerDisplay">@timerLabel</span>
                 </span>
                 <button class="theme-toggle position-static" type="button" data-theme-toggle title="Toggle dark mode">
                     <i class="bi bi-moon-stars"></i>
@@ -270,6 +283,7 @@
                     <div class="d-flex flex-wrap gap-2 align-items-center">
                         <span class="badge rounded-pill text-bg-light border">Level: @Model!.Level</span>
                         <span class="badge rounded-pill text-bg-light border">@questionTotal Questions</span>
+                        <span class="badge rounded-pill text-bg-light border">Mode: @(isSpeedMode ? "Speed - 1 minute each" : "Standard")</span>
                     </div>
                 </div>
                 <div class="text-md-end">
@@ -285,6 +299,7 @@
         <form asp-action="Submit" method="post" id="quizForm" novalidate>
             @Html.AntiForgeryToken()
             <input type="hidden" name="quizId" value="@Model!.Id" />
+            <input type="hidden" name="quizMode" value="@Model!.QuizMode" />
             <input type="hidden" name="timeExpired" id="timeExpired" value="false" />
 
             @for (int i = 0; i < questionTotal; i++)
@@ -330,9 +345,17 @@
 
             <div class="sticky-footer">
                 <div class="shell py-0">
-                    <button type="submit" class="btn btn-primary btn-lg w-100 submit-btn shadow-sm">
-                        Submit Assessment
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-outline-secondary btn-lg nav-btn" id="prevQuestionBtn">
+                            <i class="bi bi-chevron-left"></i> Previous
+                        </button>
+                        <button type="button" class="btn btn-primary btn-lg flex-grow-1 submit-btn shadow-sm" id="nextQuestionBtn">
+                            Next <i class="bi bi-chevron-right"></i>
+                        </button>
+                        <button type="submit" class="btn btn-primary btn-lg flex-grow-1 submit-btn shadow-sm d-none" id="submitQuizBtn">
+                            Submit Assessment
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -347,18 +370,27 @@
         const answeredCount = document.getElementById('answeredCount');
         const answerProgress = document.getElementById('answerProgress');
         const questionCards = Array.from(document.querySelectorAll('.question-card'));
+        const prevQuestionBtn = document.getElementById('prevQuestionBtn');
+        const nextQuestionBtn = document.getElementById('nextQuestionBtn');
+        const submitQuizBtn = document.getElementById('submitQuizBtn');
         const questionTotal = questionCards.length;
+        const isSpeedMode = @isSpeedMode.ToString().ToLowerInvariant();
+        const secondsPerQuestion = 60;
         let remainingSeconds = @durationSeconds;
         let isSubmitting = false;
         let countdownTimer = null;
+        let currentQuestionIndex = 0;
 
         function renderTimer() {
             const minutes = Math.floor(Math.max(remainingSeconds, 0) / 60);
             const seconds = Math.max(remainingSeconds, 0) % 60;
             timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-            if (remainingSeconds <= 60) {
+            const warningAt = isSpeedMode ? 10 : 60;
+            if (remainingSeconds <= warningAt) {
                 timerPill.classList.add('timer-warning');
+            } else {
+                timerPill.classList.remove('timer-warning');
             }
         }
 
@@ -372,6 +404,42 @@
             return questionCards.find(card => !card.querySelector('input[type="radio"]:checked'));
         }
 
+        function currentCardAnswered() {
+            return Boolean(questionCards[currentQuestionIndex]?.querySelector('input[type="radio"]:checked'));
+        }
+
+        function showQuestion(index, resetTimer = false) {
+            if (!questionCards.length) {
+                return;
+            }
+
+            currentQuestionIndex = Math.max(0, Math.min(index, questionTotal - 1));
+            questionCards.forEach((card, cardIndex) => {
+                card.classList.toggle('active', cardIndex === currentQuestionIndex);
+            });
+
+            prevQuestionBtn.disabled = isSpeedMode || currentQuestionIndex === 0;
+            nextQuestionBtn.classList.toggle('d-none', currentQuestionIndex === questionTotal - 1);
+            submitQuizBtn.classList.toggle('d-none', currentQuestionIndex !== questionTotal - 1);
+
+            if (isSpeedMode && resetTimer) {
+                remainingSeconds = secondsPerQuestion;
+                renderTimer();
+            }
+
+            questionCards[currentQuestionIndex].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function moveToNextQuestionOrSubmit() {
+            if (currentQuestionIndex < questionTotal - 1) {
+                questionCards[currentQuestionIndex]?.classList.remove('unanswered-alert');
+                showQuestion(currentQuestionIndex + 1, true);
+                return;
+            }
+
+            submitWhenTimeExpires();
+        }
+
         function submitWhenTimeExpires() {
             if (isSubmitting) {
                 return;
@@ -383,14 +451,19 @@
 
         renderTimer();
         updateProgress();
+        showQuestion(0, false);
 
         countdownTimer = setInterval(() => {
             remainingSeconds -= 1;
             renderTimer();
 
             if (remainingSeconds <= 0) {
-                clearInterval(countdownTimer);
-                submitWhenTimeExpires();
+                if (isSpeedMode) {
+                    moveToNextQuestionOrSubmit();
+                } else {
+                    clearInterval(countdownTimer);
+                    submitWhenTimeExpires();
+                }
             }
         }, 1000);
 
@@ -407,6 +480,21 @@
             input.addEventListener('change', updateProgress);
         });
 
+        prevQuestionBtn.addEventListener('click', () => {
+            showQuestion(currentQuestionIndex - 1, false);
+        });
+
+        nextQuestionBtn.addEventListener('click', () => {
+            const card = questionCards[currentQuestionIndex];
+            if (!currentCardAnswered()) {
+                card.classList.add('unanswered-alert');
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+
+            showQuestion(currentQuestionIndex + 1, true);
+        });
+
         form.onsubmit = function(event) {
             if (isSubmitting) {
                 event.preventDefault();
@@ -418,7 +506,7 @@
                 if (missing) {
                     event.preventDefault();
                     missing.classList.add('unanswered-alert');
-                    missing.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    showQuestion(questionCards.indexOf(missing));
                     return false;
                 }
             }
@@ -426,7 +514,7 @@
             isSubmitting = true;
             clearInterval(countdownTimer);
 
-            const btn = this.querySelector('.submit-btn');
+            const btn = submitQuizBtn;
             btn.disabled = true;
             btn.innerHTML = timeExpiredInput.value === 'true'
                 ? '<span class="spinner-border spinner-border-sm me-2"></span>Time Up - Submitting...'

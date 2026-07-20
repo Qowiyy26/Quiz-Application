@@ -74,7 +74,7 @@ namespace Quiz_Application.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Generate(Guid languageId, string level, int questionCount, List<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<IActionResult> Generate(Guid languageId, string level, int questionCount, List<string>? selectedSubtopics, string quizMode, string? subtopicTrack, CancellationToken cancellation)
         {
             if (languageId == Guid.Empty || string.IsNullOrWhiteSpace(level))
             {
@@ -86,7 +86,7 @@ namespace Quiz_Application.Controllers
 
             try
             {
-                var quiz = await _quizService.GenerateQuizAsync(userId, languageId, level, questionCount, selectedSubtopics, cancellation);
+                var quiz = await _quizService.GenerateQuizAsync(userId, languageId, level, questionCount, selectedSubtopics, quizMode, subtopicTrack, cancellation);
                 return View("TakeQuiz", quiz);
             }
             catch (InvalidOperationException ex)
@@ -105,7 +105,7 @@ namespace Quiz_Application.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Submit(Guid quizId, Dictionary<Guid, string> answers, CancellationToken cancellation)
+        public async Task<IActionResult> Submit(Guid quizId, Dictionary<Guid, string> answers, string quizMode, CancellationToken cancellation)
         {
             if (quizId == Guid.Empty)
             {
@@ -120,7 +120,7 @@ namespace Quiz_Application.Controllers
                 TempData["Score"] = result.Score;
                 TempData["TotalQuestions"] = result.TotalQuestions;
 
-                return RedirectToAction(nameof(Result), new { quizId, resultId = result.Id });
+                return RedirectToAction(nameof(Result), new { quizId, resultId = result.Id, quizMode });
             }
             catch (Exception ex)
             {
@@ -139,8 +139,28 @@ namespace Quiz_Application.Controllers
             ViewBag.ResultText = resultText;
             ViewBag.QuizId = quizId;
             ViewBag.ResultId = Request.Query["resultId"].ToString();
+            ViewBag.QuizMode = Request.Query["quizMode"].ToString();
 
             return View();
+        }
+
+        [HttpGet]
+        public async Task<IActionResult> Certificate(Guid quizId, Guid resultId, CancellationToken cancellation)
+        {
+            if (quizId == Guid.Empty || resultId == Guid.Empty)
+            {
+                TempData["Error"] = "Invalid certificate request.";
+                return RedirectToAction(nameof(History));
+            }
+
+            var certificate = await _quizService.GetQuizReviewAsync(quizId, cancellation);
+            if (certificate == null)
+            {
+                TempData["Error"] = "Could not find exam result for certificate.";
+                return RedirectToAction(nameof(History));
+            }
+
+            return View(certificate);
         }
 
         [HttpGet]

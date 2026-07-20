@@ -38,23 +38,23 @@ namespace Quiz_Application.Implementation.Service
             _logger = logger;
         }
 
-        public async Task<IEnumerable<LanguageDTO>> GenerateLanguagesFromApiAsync(string courseCategory, CancellationToken ct)
+        public async Task<IEnumerable<LanguageDTO>> GenerateLanguagesFromApiAsync(string courseCategory, CancellationToken cancellation)
         {
             try
             {
                 var course = await _courseRepository.GetCourseByNameAsync(courseCategory);
                 if (course == null) return Enumerable.Empty<LanguageDTO>();
 
-                return await GenerateLanguagesForCourseAsync(course.Id, courseCategory, ct);
+                return await GenerateLanguagesForCourseAsync(course.Id, courseCategory, cancellation);
             }
-            catch (Exception ex)
+            catch (Exception exception)
             {
-                _logger.LogError(ex, "Manual Neural Data Injection Failure for category {Category}", courseCategory);
+                _logger.LogError(exception, "Manual Neural Data Injection Failure for category {Category}", courseCategory);
                 return Enumerable.Empty<LanguageDTO>();
             }
         }
 
-        public async Task<IEnumerable<LanguageDTO>> GenerateLanguagesForCourseAsync(Guid courseId, string courseCategory, CancellationToken ct)
+        public async Task<IEnumerable<LanguageDTO>> GenerateLanguagesForCourseAsync(Guid courseId, string courseCategory, CancellationToken cancellation)
         {
             try
             {

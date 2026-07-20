@@ -1,8 +1,13 @@
-namespace Quiz_Application.Models
+namespace Quiz_Application.Models.DTO
 {
     public static class TechSubtopicCatalog
     {
         public static List<string> GetSubtopics(string? languageName)
+        {
+            return GetSubtopics(languageName, "Architecture");
+        }
+
+        public static List<string> GetSubtopics(string? languageName, string? track)
         {
             var key = (languageName ?? string.Empty).Trim().ToLowerInvariant();
             var map = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)
@@ -36,24 +41,77 @@ namespace Quiz_Application.Models
                 ["artificial intelligence"] = new() { "AI concepts", "machine learning", "neural networks", "NLP", "computer vision", "model evaluation", "prompt engineering", "ethics" }
             };
 
+            List<string> subtopics;
             if (map.TryGetValue(key, out var exactSubtopics))
             {
-                return exactSubtopics;
+                subtopics = exactSubtopics;
+                return FilterByTrack(subtopics, track);
             }
 
             foreach (var pair in map)
             {
                 if (key.Contains(pair.Key) || pair.Key.Contains(key))
                 {
-                    return pair.Value;
+                    subtopics = pair.Value;
+                    return FilterByTrack(subtopics, track);
                 }
             }
 
-            return new List<string>
+            subtopics = new List<string>
             {
                 "core concepts", "basic syntax or terminology", "practical usage", "debugging",
                 "security", "best practices", "testing", "performance", "real-world scenarios"
             };
+            return FilterByTrack(subtopics, track);
+        }
+
+        public static string ClassifyTrack(string subtopic)
+        {
+            var value = (subtopic ?? string.Empty).Trim().ToLowerInvariant();
+            var professionalKeywords = new[]
+            {
+                "architecture", "middleware", "dependency injection", "authentication", "authorization",
+                "security", "performance", "optimization", "query plans", "indexes", "transactions",
+                "testing", "unit testing", "debugging", "deployment", "monitoring", "scalability",
+                "guards", "rxjs", "jpa", "hibernate", "spring boot", "laravel", "django", "fastapi",
+                "web api", "rest api", "api security", "cookies", "sessions", "jwt", "iam", "vpc",
+                "lambda", "cloudfront", "security groups", "overfitting", "model evaluation"
+            };
+
+            var beginnerKeywords = new[]
+            {
+                "syntax", "basics", "basic", "core concepts", "terminology", "forms", "arrays",
+                "functions", "objects", "classes", "models", "views", "controllers", "routing",
+                "tables", "select queries", "filtering", "semantic html", "box model", "components",
+                "props", "state", "runtime", "modules", "npm", "ec2", "s3", "ai concepts"
+            };
+
+            if (professionalKeywords.Any(value.Contains))
+            {
+                return "Professional";
+            }
+
+            if (beginnerKeywords.Any(value.Contains))
+            {
+                return "Fundamentals";
+            }
+
+            return value.Length <= 18 ? "Fundamentals" : "Professional";
+        }
+
+        private static List<string> FilterByTrack(List<string> subtopics, string? track)
+        {
+            var selectedTrack = (track ?? "Architecture").Trim();
+            if (selectedTrack.Equals("Architecture", StringComparison.OrdinalIgnoreCase))
+            {
+                return subtopics;
+            }
+
+            var filtered = subtopics
+                .Where(s => ClassifyTrack(s).Equals(selectedTrack, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            return filtered.Any() ? filtered : subtopics;
         }
     }
 }

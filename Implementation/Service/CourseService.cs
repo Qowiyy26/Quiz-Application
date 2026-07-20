@@ -151,23 +151,23 @@ namespace Quiz_Application.Implementation.Service
             return true;
         }
 
-        private async Task<string> GetLightcastTokenAsync()
-        {
-            const string cacheKey = "Lightcast_AccessToken";
-            if (_cache.TryGetValue(cacheKey, out string? token) && !string.IsNullOrWhiteSpace(token)) return token;
+        //private async Task<string> GetLightcastTokenAsync()
+        //{
+        //    const string cacheKey = "Lightcast_AccessToken";
+        //    if (_cache.TryGetValue(cacheKey, out string? token) && !string.IsNullOrWhiteSpace(token)) return token;
 
-            var body = $"client_id={_clientId}&client_secret={_clientSecret}&grant_type=client_credentials&scope=emsi_open";
-            var content = new StringContent(body, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
+        //    var body = $"client_id={_clientId}&client_secret={_clientSecret}&grant_type=client_credentials&scope=emsi_open";
+        //    var content = new StringContent(body, System.Text.Encoding.UTF8, "application/x-www-form-urlencoded");
 
-            var response = await _httpClient.PostAsync("https://emsicloud.com", content);
-            response.EnsureSuccessStatusCode();
+        //    var response = await _httpClient.PostAsync("https://emsicloud.com", content);
+        //    response.EnsureSuccessStatusCode();
 
-            var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
-            var accessToken = result?.access_token ?? "";
+        //    var result = await response.Content.ReadFromJsonAsync<TokenResponse>();
+        //    var accessToken = result?.access_token ?? "";
 
-            _cache.Set(cacheKey, accessToken, TimeSpan.FromSeconds((result?.expires_in ?? 3600) - 60));
-            return accessToken;
-        }
+        //    _cache.Set(cacheKey, accessToken, TimeSpan.FromSeconds((result?.expires_in ?? 3600) - 60));
+        //    return accessToken;
+        //}
 
         //private List<string> GetFallbackCategories()
         //{

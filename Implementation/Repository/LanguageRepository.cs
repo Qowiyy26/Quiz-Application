@@ -33,11 +33,6 @@ namespace Quiz_Application.Implementation.Repository
                 .FirstOrDefaultAsync(l => l.Id == languageId);
         }
 
-        public Task<Language> GetLanguageByIdAsync(Language languageId)
-        {
-            throw new NotImplementedException();
-        }
-
         public async Task<Language?> GetLanguageByNameAsync(string languageName)
         {
             return await _quizContext.Languages

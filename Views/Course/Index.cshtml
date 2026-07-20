@@ -79,9 +79,6 @@
             <a class="navbar-brand" asp-action="Index">
                 <span class="brand-icon"><i class="bi bi-cpu"></i></span>Q-MS<span class="logo-accent">Tech</span>
             </a>
-            <div class="ms-auto text-white-50 small">
-                <i class="bi bi-person-circle me-1"></i> Developer Portal
-            </div>
         </div>
     </nav>
 
@@ -91,7 +88,7 @@
             <p class="lead opacity-75 mb-4">Empowering professional growth through AI-driven technical assessments.</p>
             <!-- Button Trigger Modal -->
             <button type="button" class="btn btn-generate shadow" data-bs-toggle="modal" data-bs-target="#initCourseModal">
-                <i class="bi bi-plus-lg me-2"></i>Create Course
+                <i class="bi bi-plus-lg me-2"></i>Select Course
             </button>
         </div>
     </header>
@@ -143,10 +140,6 @@
                                     @* Link to the Details action *@
                                     <a asp-action="Details" asp-route-id="@course.Id" class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold">
                                         Open Topics
-                                    </a>
-                                    @* Link to the Edit action (mapped to courseId per your controller) *@
-                                    <a asp-action="Edit" asp-route-courseId="@course.Id" class="text-secondary">
-                                        <i class="bi bi-gear-fill"></i>
                                     </a>
                                 </div>
                             </div>

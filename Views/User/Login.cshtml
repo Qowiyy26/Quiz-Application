@@ -30,10 +30,15 @@
                 <label class="qm-label">Email</label>
                 <input asp-for="Email" class="form-control qm-input mb-3" placeholder="you@example.com" required />
                 <label class="qm-label">Password</label>
-                <input asp-for="Password" type="password" class="form-control qm-input mb-3" placeholder="Your password" required />
+                <div class="input-group mb-3">
+                    <input asp-for="Password" id="loginPassword" type="password" class="form-control qm-input" placeholder="Your password" required />
+                    <button class="btn btn-outline-secondary" type="button" data-password-toggle="#loginPassword" aria-label="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <label class="form-check-label small"><input type="checkbox" name="rememberMe" class="form-check-input me-1"> Remember me</label>
-                    <a asp-action="ForgotPassword" class="qm-link small">Forgot password?</a>
+                    <span class="small text-muted">Use a strong private password</span>
                 </div>
                 <button type="submit" class="btn qm-primary w-100">Login</button>
             </form>
@@ -41,5 +46,17 @@
         </section>
     </main>
     <script src="~/js/qmstech-theme.js"></script>
+    <script>
+        document.querySelectorAll('[data-password-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.querySelector(button.dataset.passwordToggle);
+                const icon = button.querySelector('i');
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                icon.className = isHidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+                button.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+            });
+        });
+    </script>
 </body>
 </html>

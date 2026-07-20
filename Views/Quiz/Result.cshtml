@@ -4,6 +4,8 @@
     var total = TempData["TotalQuestions"];
     var quizId = ViewBag.QuizId;
     var resultId = ViewBag.ResultId;
+    var quizMode = (ViewBag.QuizMode as string) ?? "";
+    var isExamMode = string.Equals(quizMode, "Exam", StringComparison.OrdinalIgnoreCase);
 }
 
 <!DOCTYPE html>
@@ -44,6 +46,12 @@
                     </div>
 
                     <div class="d-grid gap-3">
+                        @if (isExamMode)
+                        {
+                            <a asp-action="Certificate" asp-route-quizId="@quizId" asp-route-resultId="@resultId" class="btn btn-success py-3 rounded-pill fw-bold">
+                                <i class="bi bi-award-fill me-2"></i>View Certificate
+                            </a>
+                        }
                         <a asp-action="Review" asp-route-quizId="@quizId" class="btn btn-warning py-3 rounded-pill fw-bold">
                             Review Correct & Wrong Answers
                         </a>

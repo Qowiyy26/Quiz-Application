@@ -41,7 +41,7 @@ namespace Quiz_Application.Implementation.Service
             _dbContext = dbContext;
         }
 
-        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, IEnumerable<string>? selectedSubtopics, CancellationToken cancellation)
+        public async Task<QuizDTO> GenerateQuizAsync(Guid userId, Guid languageId, string level, int questionCount, IEnumerable<string>? selectedSubtopics, string quizMode, string? subtopicTrack, CancellationToken cancellation)
         {
             var language = await _languageRepository.GetLanguageByIdAsync(languageId);
             if (language == null)
@@ -63,7 +63,8 @@ namespace Quiz_Application.Implementation.Service
 
             var requestedCount = questionCount > 0 ? Math.Clamp(questionCount, 20, 150) : 20;
             var requestedDuration = CalculateDurationMinutes(requestedCount);
-            var aiQuestions = await _questionService.GenerateQuestionsFromApiAsync(languageId, level, requestedCount, userId, selectedSubtopics, cancellation);
+            var selectedMode = NormalizeQuizMode(quizMode);
+            var aiQuestions = await _questionService.GenerateQuestionsFromApiAsync(languageId, level, requestedCount, userId, selectedSubtopics, subtopicTrack, cancellation);
 
             if (aiQuestions == null || !aiQuestions.Any())
             {
@@ -84,6 +85,7 @@ namespace Quiz_Application.Implementation.Service
             {
                 Id = quiz.Id,
                 Level = quiz.Level,
+                QuizMode = selectedMode,
                 LanguageName = language.LanguageName ?? "Unknown Tech",
                 DurationMinutes = requestedDuration,
                 CreatedDate = quiz.CreatedDate,
@@ -190,6 +192,7 @@ namespace Quiz_Application.Implementation.Service
         public async Task<QuizDTO?> GetQuizReviewAsync(Guid quizId, CancellationToken cancellation)
         {
             var quiz = await _dbContext.Quizzes
+                .Include(q => q.User)
                 .Include(q => q.Language)
                 .Include(q => q.Result)
                 .Include(q => q.Questions)
@@ -232,6 +235,7 @@ namespace Quiz_Application.Implementation.Service
             return new QuizDTO
             {
                 Id = quiz.Id,
+                UserName = quiz.User?.UserName ?? "Q-MSTech Learner",
                 Level = quiz.Level,
                 LanguageName = quiz.Language?.LanguageName ?? "Unknown",
                 CreatedDate = quiz.CreatedDate,
@@ -286,6 +290,16 @@ namespace Quiz_Application.Implementation.Service
                 <= 50 => 18,
                 <= 100 => 35,
                 _ => 60
+            };
+        }
+
+        private static string NormalizeQuizMode(string? quizMode)
+        {
+            return quizMode?.Trim().ToLowerInvariant() switch
+            {
+                "speed" => "Speed",
+                "exam" => "Exam",
+                _ => "Standard"
             };
         }
 

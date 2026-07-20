@@ -21,7 +21,7 @@
                 <span>Q-MS<span>Tech</span></span>
             </div>
             <h1 class="auth-title">Create Account</h1>
-            <p class="auth-subtitle">We will verify your email before creating the account.</p>
+            <p class="auth-subtitle">Create a secure account with a strong password.</p>
             @if (TempData["Error"] != null) { <div class="alert alert-danger">@TempData["Error"]</div> }
             <form asp-action="Register" method="post">
                 @Html.AntiForgeryToken()
@@ -30,14 +30,36 @@
                 <label class="qm-label">Email</label>
                 <input asp-for="Email" type="email" class="form-control qm-input mb-3" placeholder="you@example.com" required />
                 <label class="qm-label">Password</label>
-                <input asp-for="Password" type="password" class="form-control qm-input mb-3" placeholder="At least 8 chars, upper, lower, number" required />
+                <div class="input-group mb-3">
+                    <input asp-for="Password" id="registerPassword" type="password" class="form-control qm-input" placeholder="At least 8 chars, upper, lower, number" required />
+                    <button class="btn btn-outline-secondary" type="button" data-password-toggle="#registerPassword" aria-label="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
                 <label class="qm-label">Confirm Password</label>
-                <input asp-for="ConfirmPassword" type="password" class="form-control qm-input mb-4" placeholder="Repeat password" required />
-                <button type="submit" class="btn qm-primary w-100">Send Confirmation Code</button>
+                <div class="input-group mb-4">
+                    <input asp-for="ConfirmPassword" id="registerConfirmPassword" type="password" class="form-control qm-input" placeholder="Repeat password" required />
+                    <button class="btn btn-outline-secondary" type="button" data-password-toggle="#registerConfirmPassword" aria-label="Show password">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <button type="submit" class="btn qm-primary w-100">Create Account</button>
             </form>
             <p class="text-center mt-4 mb-0">Already registered? <a asp-action="Login" class="qm-link">Login</a></p>
         </section>
     </main>
     <script src="~/js/qmstech-theme.js"></script>
+    <script>
+        document.querySelectorAll('[data-password-toggle]').forEach(button => {
+            button.addEventListener('click', () => {
+                const input = document.querySelector(button.dataset.passwordToggle);
+                const icon = button.querySelector('i');
+                const isHidden = input.type === 'password';
+                input.type = isHidden ? 'text' : 'password';
+                icon.className = isHidden ? 'bi bi-eye-slash' : 'bi bi-eye';
+                button.setAttribute('aria-label', isHidden ? 'Hide password' : 'Show password');
+            });
+        });
+    </script>
 </body>
 </html>

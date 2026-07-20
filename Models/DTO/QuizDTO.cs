@@ -9,6 +9,7 @@ namespace Quiz_Application.Models.DTO
         public string? CourseName { get; set; }
         public string? LanguageName { get; set; }
         public string? Level { get; set; }
+        public string QuizMode { get; set; } = "Standard";
         public int TotalQuestions { get; set; }
         public int DurationMinutes { get; set; } = 20;
         public int Score { get; set; }

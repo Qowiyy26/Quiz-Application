@@ -47,7 +47,7 @@ builder.Services.AddScoped<IQuizService, QuizService>();
 builder.Services.AddScoped<IResultService, ResultService>();
 builder.Services.AddScoped<ISuggestionService, SuggestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<IEmailService, SmtpEmailService>();
+
 
 // Add database.
 var connectionString = builder.Configuration.GetConnectionString("QuizContext")

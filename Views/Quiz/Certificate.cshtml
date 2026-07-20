@@ -1,0 +1,103 @@
+@model Quiz_Application.Models.DTO.QuizDTO
+@{
+    Layout = null;
+    var total = Model.TotalQuestions > 0 ? Model.TotalQuestions : Model.Questions.Count;
+    var score = Model.Score;
+    var percentage = total > 0 ? (score * 100.0 / total) : 0;
+    var certificateNumber = $"QMS-{Model.Id.ToString()[..8].ToUpperInvariant()}";
+}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Certificate | Q-MSTech</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        body { background: #eef2f7; font-family: 'Inter', sans-serif; color: #0f172a; }
+        .certificate-shell { max-width: 1050px; margin: 32px auto; padding: 16px; }
+        .certificate {
+            min-height: 680px;
+            background: linear-gradient(135deg, #ffffff, #f8fbff);
+            border: 12px solid #1d4ed8;
+            outline: 2px solid #0f766e;
+            outline-offset: -28px;
+            box-shadow: 0 24px 60px rgba(15, 23, 42, 0.12);
+            padding: 72px 64px;
+            position: relative;
+        }
+        .brand { font-family: 'Space Grotesk', sans-serif; font-weight: 800; color: #1d4ed8; }
+        .title { font-family: 'Space Grotesk', sans-serif; font-size: clamp(2.4rem, 6vw, 5rem); font-weight: 800; letter-spacing: 0; }
+        .seal {
+            width: 118px; height: 118px; border-radius: 50%;
+            display: inline-flex; align-items: center; justify-content: center;
+            background: linear-gradient(135deg, #1d4ed8, #0f766e);
+            color: white; font-size: 3rem; box-shadow: 0 16px 30px rgba(29, 78, 216, 0.24);
+        }
+        .metric { border-top: 1px solid #cbd5e1; padding-top: 16px; }
+        .print-btn { border-radius: 8px; font-weight: 800; }
+        @@media print {
+            body { background: #fff; }
+            .no-print { display: none !important; }
+            .certificate-shell { margin: 0; max-width: none; padding: 0; }
+            .certificate { box-shadow: none; min-height: 100vh; }
+        }
+    </style>
+</head>
+<body>
+    <div class="certificate-shell">
+        <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+            <a asp-action="History" class="btn btn-outline-dark print-btn"><i class="bi bi-arrow-left me-1"></i>Back</a>
+            <button class="btn btn-primary print-btn" onclick="window.print()"><i class="bi bi-printer me-1"></i>Print / Save PDF</button>
+        </div>
+
+        <section class="certificate text-center">
+            <div class="brand fs-2 mb-4">Q-MS<span class="text-success">Tech</span></div>
+            <div class="seal mb-4"><i class="bi bi-award-fill"></i></div>
+            <p class="text-uppercase fw-bold text-secondary mb-2">Certificate of Exam Completion</p>
+            <h1 class="title mb-4">Certificate</h1>
+
+            <p class="lead mb-1">This certifies that</p>
+            <h2 class="display-6 fw-bold mb-3">@Model.UserName</h2>
+            <p class="lead mb-5">
+                completed the <strong>@Model.LanguageName</strong> exam at <strong>@Model.Level</strong> level.
+            </p>
+
+            <div class="row g-4 text-start mt-4">
+                <div class="col-md-4">
+                    <div class="metric">
+                        <div class="small text-uppercase text-secondary fw-bold">Score</div>
+                        <div class="h3 fw-bold">@score/@total</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric">
+                        <div class="small text-uppercase text-secondary fw-bold">Percentage</div>
+                        <div class="h3 fw-bold">@percentage.ToString("F1")%</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric">
+                        <div class="small text-uppercase text-secondary fw-bold">Certificate No.</div>
+                        <div class="h5 fw-bold">@certificateNumber</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-end mt-5 pt-4">
+                <div class="text-start">
+                    <div class="fw-bold">@DateTime.Now.ToString("dd MMMM yyyy")</div>
+                    <div class="text-secondary">Issue Date</div>
+                </div>
+                <div class="text-end">
+                    <div class="fw-bold brand">Q-MSTech Assessment Engine</div>
+                    <div class="text-secondary">Authorized Signature</div>
+                </div>
+            </div>
+        </section>
+    </div>
+</body>
+</html>
