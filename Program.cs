@@ -49,17 +49,23 @@ builder.Services.AddScoped<ISuggestionService, SuggestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 
-// Add database. Render provides DATABASE_URL for PostgreSQL; local development
-// falls back to the connection string in appsettings.json.
-var connectionString = builder.Configuration["DATABASE_URL"]
-    ?? builder.Configuration.GetConnectionString("QuizContext");
+// Add database. Render provides DATABASE_URL for PostgreSQL. In production,
+// never fall back to the local localhost connection string from appsettings.json.
+var databaseUrl = builder.Configuration["DATABASE_URL"]
+    ?? builder.Configuration["POSTGRES_URL"]
+    ?? builder.Configuration["POSTGRESQL_URL"];
+var configuredConnectionString = builder.Configuration.GetConnectionString("QuizContext");
+var connectionString = databaseUrl
+    ?? (builder.Environment.IsDevelopment() || !IsLocalhostConnection(configuredConnectionString)
+        ? configuredConnectionString
+        : null);
 
 connectionString = NormalizePostgresConnectionString(connectionString);
 
 if (string.IsNullOrWhiteSpace(connectionString))
 {
     throw new InvalidOperationException(
-        "Database connection string is missing. Set DATABASE_URL on Render or ConnectionStrings:QuizContext locally.");
+        "Database connection string is missing. On Render, set DATABASE_URL to your PostgreSQL Internal Database URL.");
 }
 
 builder.Services.AddDbContext<QuizContext>(options =>
@@ -158,4 +164,17 @@ static string? NormalizePostgresConnectionString(string? connectionString)
     };
 
     return npgsqlBuilder.ConnectionString;
+}
+
+static bool IsLocalhostConnection(string? connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString))
+    {
+        return false;
+    }
+
+    return connectionString.Contains("Host=localhost", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.Contains("Host=127.0.0.1", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.Contains("tcp://localhost", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.Contains("tcp://127.0.0.1", StringComparison.OrdinalIgnoreCase);
 }
