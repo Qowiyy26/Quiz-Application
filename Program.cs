@@ -49,11 +49,18 @@ builder.Services.AddScoped<ISuggestionService, SuggestionService>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 
-// Add database.
-var connectionString = builder.Configuration.GetConnectionString("QuizContext")
-    ?? builder.Configuration["DATABASE_URL"];
+// Add database. Render provides DATABASE_URL for PostgreSQL; local development
+// falls back to the connection string in appsettings.json.
+var connectionString = builder.Configuration["DATABASE_URL"]
+    ?? builder.Configuration.GetConnectionString("QuizContext");
 
 connectionString = NormalizePostgresConnectionString(connectionString);
+
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException(
+        "Database connection string is missing. Set DATABASE_URL on Render or ConnectionStrings:QuizContext locally.");
+}
 
 builder.Services.AddDbContext<QuizContext>(options =>
     options.UseNpgsql(connectionString, npgsqlOptions =>
