@@ -7,7 +7,7 @@ services:
     envVars:
       - key: ASPNETCORE_ENVIRONMENT
         value: Production
-      - key: ConnectionStrings__QuizContext
+      - key: DATABASE_URL
         fromDatabase:
           name: quiz-application-db
           property: connectionString
@@ -17,20 +17,6 @@ services:
         sync: false
       - key: Lightcast__clientSecret
         sync: false
-      - key: Smtp__Host
-        sync: false
-      - key: Smtp__Port
-        value: 587
-      - key: Smtp__Username
-        sync: false
-      - key: Smtp__Password
-        sync: false
-      - key: Smtp__FromEmail
-        sync: false
-      - key: Smtp__FromName
-        value: Q-MSTech
-      - key: Smtp__EnableSsl
-        value: true
 
 databases:
   - name: quiz-application-db
