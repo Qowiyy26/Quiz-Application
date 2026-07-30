@@ -173,6 +173,11 @@
             text-transform: uppercase;
         }
 
+        .question-text {
+            white-space: pre-wrap;
+            line-height: 1.65;
+        }
+
         .option-container {
             display: block;
             min-height: 58px;
@@ -378,7 +383,7 @@
                             <span class="helper-text small">@(i + 1) of @questionTotal</span>
                         </div>
 
-                        <h2 class="h5 fw-bold lh-base mb-4">@q.QuestionText</h2>
+                        <h2 class="h5 fw-bold question-text mb-4">@q.QuestionText</h2>
 
                         @{
                             var options = new[] {
