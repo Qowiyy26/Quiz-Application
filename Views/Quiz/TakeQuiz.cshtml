@@ -196,6 +196,70 @@
             box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
         }
 
+        .quiz-card.answered .option-container {
+            cursor: default;
+            pointer-events: none;
+        }
+
+        .option-container.option-correct {
+            border-color: #16a34a;
+            background: #dcfce7;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.14);
+        }
+
+        .option-container.option-wrong {
+            border-color: #dc2626;
+            background: #fee2e2;
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.12);
+        }
+
+        [data-theme="dark"] .option-container.option-correct {
+            background: rgba(22, 163, 74, 0.16);
+            border-color: #22c55e;
+        }
+
+        [data-theme="dark"] .option-container.option-wrong {
+            background: rgba(220, 38, 38, 0.16);
+            border-color: #ef4444;
+        }
+
+        .answer-feedback {
+            display: none;
+            border-radius: 8px;
+            border: 1px solid var(--line);
+            padding: 14px 16px;
+            margin-top: 16px;
+            background: var(--brand-soft);
+        }
+
+        .quiz-card.answered .answer-feedback {
+            display: block;
+        }
+
+        .answer-feedback.correct {
+            background: #dcfce7;
+            border-color: #86efac;
+            color: #14532d;
+        }
+
+        .answer-feedback.wrong {
+            background: #fee2e2;
+            border-color: #fecaca;
+            color: #7f1d1d;
+        }
+
+        [data-theme="dark"] .answer-feedback.correct {
+            background: rgba(22, 163, 74, 0.16);
+            border-color: rgba(34, 197, 94, 0.46);
+            color: #bbf7d0;
+        }
+
+        [data-theme="dark"] .answer-feedback.wrong {
+            background: rgba(220, 38, 38, 0.16);
+            border-color: rgba(248, 113, 113, 0.48);
+            color: #fecaca;
+        }
+
         .form-check-input {
             width: 1.1rem;
             height: 1.1rem;
@@ -305,7 +369,7 @@
             @for (int i = 0; i < questionTotal; i++)
             {
                 var q = Model!.Questions[i];
-                <section class="quiz-card question-card" data-question-id="@q.Id">
+                <section class="quiz-card question-card" data-question-id="@q.Id" data-correct-answer="@q.CorrectAnswer">
                     <div class="p-4 p-md-5">
                         <div class="d-flex justify-content-between align-items-center mb-4">
                             <span class="question-kicker">
@@ -327,7 +391,7 @@
 
                         @foreach (var opt in options)
                         {
-                            <label class="option-container" for="q_@(q.Id)_@opt.Letter">
+                            <label class="option-container" for="q_@(q.Id)_@opt.Letter" data-option-value="@opt.Val">
                                 <span class="d-flex align-items-center gap-3">
                                     <input class="form-check-input shadow-none question-option"
                                            type="radio"
@@ -336,9 +400,15 @@
                                            id="q_@(q.Id)_@opt.Letter" />
                                     <span class="option-letter">@opt.Letter</span>
                                     <span class="fw-semibold">@opt.Val</span>
+                                    <span class="ms-auto option-status fw-bold small"></span>
                                 </span>
                             </label>
                         }
+
+                        <div class="answer-feedback" aria-live="polite">
+                            <div class="fw-bold feedback-title mb-1"></div>
+                            <div class="small feedback-body"></div>
+                        </div>
                     </div>
                 </section>
             }
@@ -395,7 +465,7 @@
         }
 
         function updateProgress() {
-            const answered = questionCards.filter(card => card.querySelector('input[type="radio"]:checked')).length;
+            const answered = questionCards.filter(card => card.dataset.answered === 'true' || card.querySelector('input[type="radio"]:checked')).length;
             answeredCount.textContent = answered;
             answerProgress.style.width = questionTotal === 0 ? '0%' : `${(answered / questionTotal) * 100}%`;
         }
@@ -405,7 +475,56 @@
         }
 
         function currentCardAnswered() {
-            return Boolean(questionCards[currentQuestionIndex]?.querySelector('input[type="radio"]:checked'));
+            const card = questionCards[currentQuestionIndex];
+            return Boolean(card?.dataset.answered === 'true' || card?.querySelector('input[type="radio"]:checked'));
+        }
+
+        function normalizeAnswer(value) {
+            return (value || '').trim().replace(/\s+/g, ' ').toLowerCase();
+        }
+
+        function revealAnswer(card, selectedValue) {
+            if (!card || card.dataset.answered === 'true') {
+                return;
+            }
+
+            const correctAnswer = card.dataset.correctAnswer || '';
+            const selectedAnswer = selectedValue || '';
+            const isCorrect = normalizeAnswer(selectedAnswer) === normalizeAnswer(correctAnswer);
+            const feedback = card.querySelector('.answer-feedback');
+            const feedbackTitle = card.querySelector('.feedback-title');
+            const feedbackBody = card.querySelector('.feedback-body');
+
+            card.dataset.answered = 'true';
+            card.classList.add('answered');
+            feedback?.classList.toggle('correct', isCorrect);
+            feedback?.classList.toggle('wrong', !isCorrect);
+
+            card.querySelectorAll('.option-container').forEach(option => {
+                const optionValue = option.dataset.optionValue || '';
+                const status = option.querySelector('.option-status');
+                const optionIsCorrect = normalizeAnswer(optionValue) === normalizeAnswer(correctAnswer);
+                const optionIsSelected = normalizeAnswer(optionValue) === normalizeAnswer(selectedAnswer);
+
+                option.classList.toggle('option-correct', optionIsCorrect);
+                option.classList.toggle('option-wrong', optionIsSelected && !optionIsCorrect);
+
+                if (status) {
+                    status.textContent = optionIsCorrect ? 'Correct' : (optionIsSelected ? 'Your answer' : '');
+                }
+            });
+
+            if (feedbackTitle) {
+                feedbackTitle.innerHTML = isCorrect
+                    ? '<i class="bi bi-check-circle-fill me-1"></i> Correct answer'
+                    : '<i class="bi bi-x-circle-fill me-1"></i> Wrong answer';
+            }
+
+            if (feedbackBody) {
+                feedbackBody.textContent = isCorrect
+                    ? 'Good choice. Continue to the next practical question.'
+                    : `Correct answer: ${correctAnswer}`;
+            }
         }
 
         function showQuestion(index, resetTimer = false) {
@@ -468,16 +587,27 @@
         }, 1000);
 
         document.querySelectorAll('.option-container').forEach(container => {
-            container.addEventListener('click', function() {
+            container.addEventListener('click', function(event) {
+                const card = this.closest('.question-card');
+                if (card?.dataset.answered === 'true') {
+                    event.preventDefault();
+                    return;
+                }
+
                 const radio = this.querySelector('input[type="radio"]');
                 radio.checked = true;
-                this.closest('.question-card')?.classList.remove('unanswered-alert');
+                card?.classList.remove('unanswered-alert');
+                revealAnswer(card, radio.value);
                 updateProgress();
             });
         });
 
         document.querySelectorAll('.question-option').forEach(input => {
-            input.addEventListener('change', updateProgress);
+            input.addEventListener('change', function() {
+                const card = this.closest('.question-card');
+                revealAnswer(card, this.value);
+                updateProgress();
+            });
         });
 
         prevQuestionBtn.addEventListener('click', () => {
