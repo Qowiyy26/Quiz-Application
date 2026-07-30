@@ -57,6 +57,10 @@ namespace Quiz_Application.Implementation.Service
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
             var focusAreas = selected.Any() ? selected : allowedSubtopics;
+            if (!focusAreas.Any())
+            {
+                focusAreas = new List<string> { languageName };
+            }
             var previousQuestions = (await _questionRepository.GetPreviousQuestionTextsAsync(userId, languageId))
                 .Select(NormalizeQuestion)
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -114,7 +118,7 @@ namespace Quiz_Application.Implementation.Service
                     using var doc = JsonDocument.Parse(json);
                     var geminiContent = doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
 
-                    var cleanedJson = Regex.Replace(geminiContent ?? "[]", @"^```json|```$", "", RegexOptions.Multiline).Trim();
+                    var cleanedJson = ExtractJsonArray(geminiContent);
                     var rawQuestions = JsonSerializer.Deserialize<List<ExternalQuestionModel>>(cleanedJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
                     var currentQuestions = questions.Select(q => NormalizeQuestion(q.QuestionText)).ToHashSet(StringComparer.OrdinalIgnoreCase);
                     var blockedQuestions = previousQuestions.Concat(currentQuestions).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -316,6 +320,11 @@ namespace Quiz_Application.Implementation.Service
 
         private static List<QuestionDTO> BuildFallbackQuestions(Guid languageId, string languageName, string level, int count, HashSet<string> blockedQuestions, List<string> focusAreas)
         {
+            if (focusAreas == null || !focusAreas.Any())
+            {
+                focusAreas = new List<string> { languageName };
+            }
+
             var templates = new[]
             {
                 new { Question = "A {0} service method using {2} must save a record only when validation passes:\n\nif (!IsValid(input)) return Error(\"Invalid\");\n// TODO\nreturn Success();\n\nWhich replacement best fits a real production method?", A = "await repository.SaveAsync(input);", B = "repository.SaveAsync(input);", C = "return Success(); await repository.SaveAsync(input);", D = "if (input != null) return Success();", Correct = "await repository.SaveAsync(input);" },
@@ -333,15 +342,13 @@ namespace Quiz_Application.Implementation.Service
             var questions = new List<QuestionDTO>();
             var attempt = 0;
 
-            while (questions.Count < count && attempt < count * 4)
+            while (questions.Count < count && attempt < count * 12)
             {
                 var template = templates[attempt % templates.Length];
                 var focusArea = focusAreas[attempt % focusAreas.Count];
+                var scenarioNumber = attempt / templates.Length + 1;
                 var questionText = string.Format(template.Question, languageName, level, focusArea);
-                if (attempt >= templates.Length)
-                {
-                    questionText = $"{questionText} Scenario {attempt / templates.Length + 1}.";
-                }
+                questionText = $"{questionText}\n\nContext: {level} level, {focusArea}, scenario {scenarioNumber}.";
 
                 var normalized = NormalizeQuestion(questionText);
                 attempt++;
@@ -368,6 +375,25 @@ namespace Quiz_Application.Implementation.Service
             }
 
             return questions;
+        }
+
+        private static string ExtractJsonArray(string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+            {
+                return "[]";
+            }
+
+            var cleaned = Regex.Replace(content, @"```(?:json)?|```", "", RegexOptions.IgnoreCase).Trim();
+            var start = cleaned.IndexOf('[');
+            var end = cleaned.LastIndexOf(']');
+
+            if (start >= 0 && end > start)
+            {
+                return cleaned[start..(end + 1)];
+            }
+
+            return "[]";
         }
 
         private static List<string> ShuffleOptions(List<string> options)
