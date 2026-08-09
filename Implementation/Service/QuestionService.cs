@@ -347,7 +347,7 @@ namespace Quiz_Application.Implementation.Service
                 var template = templates[attempt % templates.Length];
                 var focusArea = focusAreas[attempt % focusAreas.Count];
                 var scenarioNumber = attempt / templates.Length + 1;
-                var questionText = string.Format(template.Question, languageName, level, focusArea);
+                var questionText = ApplyQuestionTemplate(template.Question, languageName, level, focusArea);
                 questionText = $"{questionText}\n\nContext: {level} level, {focusArea}, scenario {scenarioNumber}.";
 
                 var normalized = NormalizeQuestion(questionText);
@@ -375,6 +375,14 @@ namespace Quiz_Application.Implementation.Service
             }
 
             return questions;
+        }
+
+        private static string ApplyQuestionTemplate(string template, string languageName, string level, string focusArea)
+        {
+            return template
+                .Replace("{0}", languageName)
+                .Replace("{1}", level)
+                .Replace("{2}", focusArea);
         }
 
         private static string ExtractJsonArray(string? content)
