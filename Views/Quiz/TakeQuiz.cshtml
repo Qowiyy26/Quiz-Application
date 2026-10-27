@@ -178,6 +178,18 @@
             line-height: 1.65;
         }
 
+        .question-text.code-question {
+            padding: 18px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--accent);
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--page) 84%, transparent);
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.94rem;
+            font-weight: 600;
+            line-height: 1.65;
+        }
+
         .option-container {
             display: block;
             min-height: 58px;
@@ -399,7 +411,13 @@
                             <span class="helper-text small">@(i + 1) of @questionTotal</span>
                         </div>
 
-                        <h2 class="h5 fw-bold question-text mb-4">@q.QuestionText</h2>
+                        @{
+                            var isCodeQuestion = !string.IsNullOrWhiteSpace(q.QuestionText) &&
+                                (q.QuestionText.Contains("\n") || q.QuestionText.Contains("=>") ||
+                                 q.QuestionText.Contains("SELECT ", StringComparison.OrdinalIgnoreCase) ||
+                                 q.QuestionText.Contains("await ", StringComparison.OrdinalIgnoreCase));
+                        }
+                        <h2 class="h5 fw-bold question-text @(isCodeQuestion ? "code-question" : string.Empty) mb-4">@q.QuestionText</h2>
 
                         @{
                             var options = new[] {
