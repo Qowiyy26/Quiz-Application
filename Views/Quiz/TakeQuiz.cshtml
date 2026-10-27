@@ -289,6 +289,22 @@
             flex: 0 0 28px;
         }
 
+        .option-value {
+            min-width: 0;
+            white-space: pre-wrap;
+        }
+
+        .option-value.code-option {
+            display: inline-block;
+            padding: 7px 9px;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: color-mix(in srgb, var(--page) 82%, transparent);
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 0.9rem;
+            line-height: 1.45;
+        }
+
         .sticky-footer {
             position: fixed;
             left: 0;
@@ -396,6 +412,11 @@
 
                         @foreach (var opt in options)
                         {
+                            var isCodeOption = !string.IsNullOrWhiteSpace(opt.Val) &&
+                                (opt.Val.Contains("=>") || opt.Val.Contains(";") || opt.Val.Contains("(") ||
+                                 opt.Val.Contains("{") || opt.Val.StartsWith("await ", StringComparison.OrdinalIgnoreCase) ||
+                                 opt.Val.StartsWith("SELECT ", StringComparison.OrdinalIgnoreCase) ||
+                                 opt.Val.StartsWith("INSERT ", StringComparison.OrdinalIgnoreCase));
                             <label class="option-container" for="q_@(q.Id)_@opt.Letter" data-option-value="@opt.Val">
                                 <span class="d-flex align-items-center gap-3">
                                     <input class="form-check-input shadow-none question-option"
@@ -404,7 +425,7 @@
                                            value="@opt.Val"
                                            id="q_@(q.Id)_@opt.Letter" />
                                     <span class="option-letter">@opt.Letter</span>
-                                    <span class="fw-semibold">@opt.Val</span>
+                                    <span class="fw-semibold option-value @(isCodeOption ? "code-option" : string.Empty)">@opt.Val</span>
                                     <span class="ms-auto option-status fw-bold small"></span>
                                 </span>
                             </label>

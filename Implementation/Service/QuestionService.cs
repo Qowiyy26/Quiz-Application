@@ -260,6 +260,7 @@ namespace Quiz_Application.Implementation.Service
                    $"{trackInstruction} " +
                    $"Make at least 95 percent of the questions practical, scenario-based, and code-focused. Only 5 percent may be pure theory. Put the learner inside real-life software tasks such as building a login flow, fixing a bug, completing a controller/action, choosing a SQL query, securing an endpoint, debugging an API request, refactoring a method, reading a stack trace, writing a method body, or completing a small code snippet. " +
                    $"Most questions must include a short code snippet, command, query, method signature, configuration sample, terminal output, stack trace, or pseudo-code scenario inside the question text. " +
+                   $"For at least 70 percent of questions, make the answer options concrete code lines, query fragments, commands, method calls, or configuration values where that is natural for the selected technology. " +
                    $"Ask what code should replace a TODO, which method call completes the feature, which snippet produces the required behavior, which implementation is safest, why a method is used, what bug causes the output, and which tradeoff matters in a real project. " +
                    $"Do not ask shallow questions like 'What is X?' unless it is one of the rare theory questions. A question is too easy if a learner can answer it by recognizing a keyword without reading the scenario or code. " +
                    $"Every practical question must require code reasoning: the learner should inspect the snippet, understand the method or behavior, and choose the best action, code line, query, command, fix, or design decision. " +
@@ -285,14 +286,13 @@ namespace Quiz_Application.Implementation.Service
             if (rawQuestions == null) return new List<QuestionDTO>();
 
             return rawQuestions
-                .Where(q => !string.IsNullOrWhiteSpace(q.Question) && q.Options.Count >= 4)
+                .Where(IsValidGeneratedQuestion)
                 .Where(q => !blockedQuestions.Contains(NormalizeQuestion(q.Question)))
                 .Take(count)
                 .Select(q =>
                 {
                     var options = q.Options.Take(4).Select(o => o ?? string.Empty).ToList();
-                    var correctAnswer = options.FirstOrDefault(o => string.Equals(o, q.CorrectAnswer, StringComparison.OrdinalIgnoreCase))
-                        ?? options.First();
+                    var correctAnswer = options.First(o => AnswersMatch(o, q.CorrectAnswer));
                     options = ShuffleOptions(options);
 
                     return new QuestionDTO
@@ -309,6 +309,36 @@ namespace Quiz_Application.Implementation.Service
                     };
                 })
                 .ToList();
+        }
+
+        private static bool IsValidGeneratedQuestion(ExternalQuestionModel question)
+        {
+            if (string.IsNullOrWhiteSpace(question.Question) ||
+                question.Options == null ||
+                question.Options.Count < 4 ||
+                string.IsNullOrWhiteSpace(question.CorrectAnswer))
+            {
+                return false;
+            }
+
+            var options = question.Options
+                .Take(4)
+                .Where(option => !string.IsNullOrWhiteSpace(option))
+                .ToList();
+
+            return options.Count == 4 &&
+                options.Distinct(StringComparer.OrdinalIgnoreCase).Count() == 4 &&
+                options.Any(option => AnswersMatch(option, question.CorrectAnswer));
+        }
+
+        private static bool AnswersMatch(string? first, string? second)
+        {
+            return string.Equals(NormalizeAnswer(first), NormalizeAnswer(second), StringComparison.Ordinal);
+        }
+
+        private static string NormalizeAnswer(string? value)
+        {
+            return Regex.Replace(value?.Trim() ?? string.Empty, @"\s+", " ");
         }
 
         private class ExternalQuestionModel
@@ -333,7 +363,7 @@ namespace Quiz_Application.Implementation.Service
                 new { Question = "A {0} API endpoint using {2} returns duplicate rows after a join. Which fix is most appropriate when the requirement is one record per user?", A = "Group or filter by the user key and return the required projection only", B = "Increase the HTTP timeout so duplicates disappear", C = "Sort by name because sorting removes duplicates", D = "Move the query to the controller without changing it", Correct = "Group or filter by the user key and return the required projection only" },
                 new { Question = "A {0} method using {2} is slow:\n\nforeach (var id in ids)\n{\n    var item = await repo.FindAsync(id);\n    results.Add(item);\n}\n\nWhat is the best production fix?", A = "Fetch the required records in one query/batch instead of one query per id", B = "Add more comments inside the loop", C = "Convert ids to uppercase before the loop", D = "Run the same loop twice to warm up the database", Correct = "Fetch the required records in one query/batch instead of one query per id" },
                 new { Question = "A {0} form using {2} accepts this client value:\n\nprice = \"-500\"\n\nWhich server-side check is most important before saving?", A = "Validate type, range, and business rule on the server even if the UI already validates", B = "Trust the browser validation because users cannot change form data", C = "Save the value first and validate it in the dashboard later", D = "Hide the input field so invalid values cannot exist", Correct = "Validate type, range, and business rule on the server even if the UI already validates" },
-                new { Question = "A {0} controller action using {2} catches every exception and returns success:\n\ntry {{ await SaveAsync(model); }} catch {{ }}\nreturn Ok();\n\nWhat is the hardest bug this creates?", A = "The app hides failed saves, so users and logs can show success when data was lost", B = "The app compiles slower because catch blocks are expensive", C = "The method automatically retries forever", D = "The database creates extra tables for each exception", Correct = "The app hides failed saves, so users and logs can show success when data was lost" },
+                new { Question = "A {0} controller action using {2} catches every exception and returns success:\n\ntry { await SaveAsync(model); } catch { }\nreturn Ok();\n\nWhat is the hardest bug this creates?", A = "The app hides failed saves, so users and logs can show success when data was lost", B = "The app compiles slower because catch blocks are expensive", C = "The method automatically retries forever", D = "The database creates extra tables for each exception", Correct = "The app hides failed saves, so users and logs can show success when data was lost" },
                 new { Question = "A teammate proposes this {0} fix for {2}:\n\nvar sql = \"SELECT * FROM Users WHERE Email = '\" + email + \"'\";\n\nWhich replacement is safest?", A = "Use a parameterized query or ORM filter that binds email as a parameter", B = "Remove spaces from email before concatenating it", C = "Put the SQL string in a different class", D = "Add ORDER BY Email to make injection impossible", Correct = "Use a parameterized query or ORM filter that binds email as a parameter" },
                 new { Question = "A {0} method using {2} must update an entity and preserve audit fields. Which implementation is best?", A = "Load the existing entity, update allowed fields, validate, then save changes", B = "Create a new entity from the request and overwrite every column", C = "Accept all request fields because the client already knows the model", D = "Delete the old row and insert a new row for every edit", Correct = "Load the existing entity, update allowed fields, validate, then save changes" },
                 new { Question = "A {0} deployment using {2} works locally but fails in production because it reads localhost configuration. What is the correct fix?", A = "Read production settings from environment variables and keep localhost only for development", B = "Hard-code the developer machine password in the source code", C = "Rename the database so localhost becomes public", D = "Disable migrations so connection errors are invisible", Correct = "Read production settings from environment variables and keep localhost only for development" }
